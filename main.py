@@ -10,6 +10,8 @@
 
 import multiprocessing, argparse, signal
 
+import global_mod as g
+
 import rpc
 import interface
 import config
@@ -33,8 +35,8 @@ if __name__ == '__main__':
     # parse commandline arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config",
-                        help="path to config file [bitcoin.conf]",
-                        default="bitcoin.conf")
+                        help="path to config file [" + g.coin_smallname + ".conf]",
+                        default=g.coin_smallname + ".conf")
     args = parser.parse_args()
 
     # parse config file

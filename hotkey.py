@@ -1,4 +1,5 @@
 #/usr/bin/env python
+#/usr/bin/env python
 import curses
 
 import global_mod as g
@@ -10,8 +11,9 @@ import wallet
 import console
 import net
 import forks
+import footer
 
-def change_mode(state, window, mode):
+def change_mode(state, window, mode, rpc_queue=None):
     try:
         g.modes.index(mode)
     except ValueError:
@@ -20,28 +22,28 @@ def change_mode(state, window, mode):
     state['mode'] = mode
 
     if mode == 'monitor':
-        monitor.draw_window(state, window)
+        monitor.draw_window(state, window, rpc_queue)
     elif mode == 'tx':
-        tx.draw_window(state, window)
+        tx.draw_window(state, window, rpc_queue)
     elif mode == 'peers':
-        peers.draw_window(state, window)
+        peers.draw_window(state, window, rpc_queue)
     elif mode == 'wallet':
-        wallet.draw_window(state, window)
+        wallet.draw_window(state, window, rpc_queue)
     elif mode == 'block':
-        block.draw_window(state, window)
+        block.draw_window(state, window, rpc_queue)
     elif mode == 'console':
-        console.draw_window(state, window)
+        console.draw_window(state, window, rpc_queue)
     elif mode == 'net':
-        net.draw_window(state, window)
+        net.draw_window(state, window, rpc_queue)
     elif mode == 'forks':
-        forks.draw_window(state, window)
-
+        forks.draw_window(state, window, rpc_queue)
+    
 def key_left(state, window, rpc_queue):
     try:
         index = g.modes.index(state['mode']) - 1
         if index < 0:
             index = len(g.modes) - 2
-        change_mode(state, window, g.modes[index])
+        change_mode(state, window, g.modes[index], rpc_queue)
     except:
         pass
 
@@ -50,21 +52,21 @@ def key_right(state, window, rpc_queue):
         index = g.modes.index(state['mode']) + 1
         if index > len(g.modes) - 2: # last index item is 'quit'
             index = 0
-        change_mode(state, window, g.modes[index])
+        change_mode(state, window, g.modes[index], rpc_queue)
     except:
         pass
 
 def key_w(state, window, rpc_queue):
     rpc_queue.put('listsinceblock')
-    change_mode(state, window, 'wallet')
+    change_mode(state, window, 'wallet', rpc_queue)
 
 def key_p(state, window, rpc_queue):
     rpc_queue.put('getpeerinfo')
-    change_mode(state, window, 'peers')
+    change_mode(state, window, 'peers', rpc_queue)
 
 def key_f(state, window, rpc_queue):
     rpc_queue.put('getchaintips')
-    change_mode(state, window, 'forks')
+    change_mode(state, window, 'forks', rpc_queue)
 
 def key_g(state, window, rpc_queue):
     if state['mode'] == 'tx':
@@ -82,9 +84,10 @@ def go_to_latest_block(state, window, rpc_queue):
             if state['mininginfo']['blocks'] not in state['blocks']:
                 s = {'getblockhash': state['mininginfo']['blocks']}
                 rpc_queue.put(s)
+                footer.draw_window(state, rpc_queue)
             else:
                 state['blocks']['browse_height'] = state['mininginfo']['blocks']
-                block.draw_window(state, window)
+                block.draw_window(state, window, rpc_queue)
 
 def scroll_down(state, window, rpc_queue):
     if state['mode'] == 'tx':
@@ -201,7 +204,7 @@ def scroll_down_page(state, window, rpc_queue):
             state['console']['offset'] = 0
         console.draw_buffer(state)
 
-def toggle_inputs_outputs(state, window, rpc_queue):
+def toggle_submode(state, window, rpc_queue):
     if state['mode'] == 'tx':
         if 'tx' in state:
             if 'mode' in state['tx']:
@@ -209,7 +212,16 @@ def toggle_inputs_outputs(state, window, rpc_queue):
                     state['tx']['mode'] = 'outputs'
                 else:
                     state['tx']['mode'] = 'inputs'
-                tx.draw_window(state, window)
+                tx.draw_window(state, window, rpc_queue)
+    if state['mode'] == 'wallet':
+        if 'mode' in state['wallet']:
+            if state['wallet']['mode'] == 'tx':
+                state['wallet']['mode'] = 'addresses'
+                s = {'listreceivedbyaddress': '0 true'}
+                rpc_queue.put(s)
+            else:
+                state['wallet']['mode'] = 'tx'
+            wallet.draw_window(state, window, rpc_queue)
 
 def load_transaction(state, window, rpc_queue):
     # TODO: some sort of indicator that a transaction is loading
@@ -220,6 +232,7 @@ def load_transaction(state, window, rpc_queue):
                     state['tx']['loaded'] = 0
                     s = {'txid': state['tx']['vin'][ state['tx']['cursor'] ]['txid']}
                     rpc_queue.put(s)
+                    footer.draw_window(state, rpc_queue)
 
     elif state['mode'] == "block":
         if 'blocks' in state:
@@ -230,6 +243,7 @@ def load_transaction(state, window, rpc_queue):
                     s = {'txid': blockdata['tx'][ state['blocks']['cursor'] ]}
                     rpc_queue.put(s)
                     state['mode'] = 'tx'
+                    change_mode(state, window, state['mode'], rpc_queue)
 
     elif state['mode'] == "wallet":
         if 'wallet' in state:
@@ -237,6 +251,7 @@ def load_transaction(state, window, rpc_queue):
                 s = {'txid': state['wallet']['transactions'][ state['wallet']['cursor'] ]['txid']}
                 rpc_queue.put(s)
                 state['mode'] = 'tx'
+                change_mode(state, window, state['mode'], rpc_queue)
 
 def toggle_verbose_mode(state, window, rpc_queue):
     if state['mode'] == 'tx':
@@ -251,6 +266,7 @@ def toggle_verbose_mode(state, window, rpc_queue):
                         s = {'txid': state['tx']['txid']}
 
                     rpc_queue.put(s)
+                    footer.draw_window(state, rpc_queue)
 
 def block_seek_back_one(state, window, rpc_queue):
     if state['mode'] == "block":
@@ -262,10 +278,11 @@ def block_seek_back_one(state, window, rpc_queue):
                     state['blocks']['cursor'] = 0
                     state['blocks']['offset'] = 0
                     if str(state['blocks']['browse_height']) in state['blocks']:
-                        block.draw_window(state, window)
+                        block.draw_window(state, window, rpc_queue)
                     else:
                         s = {'getblockhash': state['blocks']['browse_height']}
                         rpc_queue.put(s)
+                        footer.draw_window(state, rpc_queue)
 
 def block_seek_forward_one(state, window, rpc_queue):
     if state['mode'] == "block":
@@ -277,10 +294,11 @@ def block_seek_forward_one(state, window, rpc_queue):
                     state['blocks']['cursor'] = 0
                     state['blocks']['offset'] = 0
                     if str(state['blocks']['browse_height']) in state['blocks']:
-                        block.draw_window(state, window)
+                        block.draw_window(state, window, rpc_queue)
                     else:
                         s = {'getblockhash': state['blocks']['browse_height']}
                         rpc_queue.put(s)
+                        footer.draw_window(state, rpc_queue)
 
 def block_seek_back_thousand(state, window, rpc_queue):
     if state['mode'] == "block":
@@ -292,10 +310,11 @@ def block_seek_back_thousand(state, window, rpc_queue):
                     state['blocks']['cursor'] = 0
                     state['blocks']['offset'] = 0
                     if str(state['blocks']['browse_height']) in state['blocks']:
-                        block.draw_window(state, window)
+                        block.draw_window(state, window, rpc_queue)
                     else:
                         s = {'getblockhash': state['blocks']['browse_height']}
                         rpc_queue.put(s)
+                        footer.draw_window(state, rpc_queue)
 
 def block_seek_forward_thousand(state, window, rpc_queue):
     if state['mode'] == "block":
@@ -307,10 +326,11 @@ def block_seek_forward_thousand(state, window, rpc_queue):
                     state['blocks']['cursor'] = 0
                     state['blocks']['offset'] = 0
                     if str(state['blocks']['browse_height']) in state['blocks']:
-                        block.draw_window(state, window)
+                        block.draw_window(state, window, rpc_queue)
                     else:
                         s = {'getblockhash': state['blocks']['browse_height']}
                         rpc_queue.put(s)
+                        footer.draw_window(state, rpc_queue)
 
 keymap = {
     curses.KEY_LEFT: key_left,
@@ -340,8 +360,8 @@ keymap = {
     ord('l'): go_to_latest_block,
     ord('L'): go_to_latest_block,
 
-    ord('\t'): toggle_inputs_outputs,
-    9: toggle_inputs_outputs,
+    ord('\t'): toggle_submode,
+    9: toggle_submode,
 
     ord("v"): toggle_verbose_mode,
     ord("V"): toggle_verbose_mode,
@@ -380,7 +400,7 @@ def check(state, window, rpc_queue):
         keymap[key](state, window, rpc_queue)
 
     elif key in modemap:
-        change_mode(state, window, modemap[key])
+        change_mode(state, window, modemap[key], rpc_queue)
 
     elif key == ord('q') or key == ord('Q'): # quit
         return True

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import Queue, textwrap, time
 
+import global_mod as g
 import tx
 import block
 import monitor
@@ -11,23 +12,25 @@ import console
 import net
 import forks
 
-def resize(s, state, window):
+def resize(s, state, window, rpc_queue):
     if state['mode'] == 'tx':
-        tx.draw_window(state, window)
+        tx.draw_window(state, window, rpc_queue)
     elif state['mode'] == 'block':
-        block.draw_window(state, window)
+        block.draw_window(state, window, rpc_queue)
     elif state['mode'] == 'peers':
-        peers.draw_window(state, window)
+        peers.draw_window(state, window, rpc_queue)
     elif state['mode'] == 'wallet':
-        wallet.draw_window(state, window)
+        wallet.draw_window(state, window, rpc_queue)
     elif state['mode'] == 'monitor':
-        monitor.draw_window(state, window)
+        monitor.draw_window(state, window, rpc_queue)
     elif state['mode'] == 'console':
-        console.draw_window(state, window)
+        console.draw_window(state, window, rpc_queue)
     elif state['mode'] == 'net':
-        net.draw_window(state, window)
+        net.draw_window(state, window, rpc_queue)
+    elif state['mode'] == 'forks':
+        forks.draw_window(state, window, rpc_queue)
 
-def getinfo(s, state, window):
+def getinfo(s, state, window, rpc_queue):
     state['version'] = str(s['getinfo']['version'] / 1000000)
     state['version'] += '.' + str((s['getinfo']['version'] % 1000000) / 10000)
     state['version'] += '.' + str((s['getinfo']['version'] % 10000) / 100)
@@ -38,7 +41,7 @@ def getinfo(s, state, window):
         state['testnet'] = 0
 
     if state['mode'] == "splash":
-        splash.draw_window(state, window)
+        splash.draw_window(state, window, rpc_queue)
 
 def getconnectioncount(s, state, window):
     state['peers'] = s['getconnectioncount']
@@ -49,35 +52,35 @@ def getbalance(s, state, window):
 def getunconfirmedbalance(s, state, window):
     state['unconfirmedbalance'] = s['getunconfirmedbalance']
 
-def getblock(s, state, window):
+def getblock(s, state, window, rpc_queue=None):
     height = s['getblock']['height']
 
     state['blocks'][str(height)] = s['getblock']
 
     if state['mode'] == "monitor":
-        monitor.draw_window(state, window)
+        monitor.draw_window(state, window, rpc_queue)
     if state['mode'] == "block":
         if 'queried' in s['getblock']:
             state['blocks'][str(height)].pop('queried')
             state['blocks']['browse_height'] = height
             state['blocks']['offset'] = 0
             state['blocks']['cursor'] = 0
-            block.draw_window(state, window)
+            block.draw_window(state, window, rpc_queue)
 
 def coinbase(s, state, window):
     height = str(s['height'])
     if height in state['blocks']:
         state['blocks'][height]['coinbase_amount'] = s['coinbase']
 
-def getnetworkhashps(s, state, window):
+def getnetworkhashps(s, state, window, rpc_queue):
     blocks = s['getnetworkhashps']['blocks']
     state['networkhashps'][blocks] = s['getnetworkhashps']['value']
 
     if state['mode'] == "splash" and blocks == 2016: # initialization complete
         state['mode'] = "monitor"
-        monitor.draw_window(state, window)
+        monitor.draw_window(state, window, rpc_queue)
 
-def getnettotals(s, state, window):
+def getnettotals(s, state, window, rpc_queue):
     state['totalbytesrecv'] = s['getnettotals']['totalbytesrecv']
     state['totalbytessent'] = s['getnettotals']['totalbytessent']
 
@@ -88,7 +91,7 @@ def getnettotals(s, state, window):
         state['history']['getnettotals'] = state['history']['getnettotals'][-300:]
 
     if state['mode'] == 'net':
-        net.draw_window(state, window)
+        net.draw_window(state, window, rpc_queue)
 
 def getmininginfo(s, state, window):
     state['mininginfo'] = s['getmininginfo']
@@ -98,24 +101,25 @@ def getmininginfo(s, state, window):
 
     state['networkhashps']['diff'] = (int(s['getmininginfo']['difficulty'])*2**32)/600
 
-def getpeerinfo(s, state, window):
+def getpeerinfo(s, state, window, rpc_queue):
     state['peerinfo'] = s['getpeerinfo']
     state['peerinfo_offset'] = 0
     if state['mode'] == "peers":
-        peers.draw_window(state, window)
+        peers.draw_window(state, window, rpc_queue)
 
-def getchaintips(s, state, window):
+def getchaintips(s, state, window, rpc_queue):
     state['chaintips'] = s['getchaintips']
     state['chaintips_offset'] = 0
     if state['mode'] == 'forks':
-        forks.draw_window(state, window)
+        forks.draw_window(state, window, rpc_queue)
 
-def listsinceblock(s, state, window):
+def listsinceblock(s, state, window, rpc_queue):
     state['wallet'] = s['listsinceblock']
     state['wallet']['cursor'] = 0
     state['wallet']['offset'] = 0
 
     state['wallet']['view_string'] = []
+    state['wallet']['view_colorpair'] = []
 
     state['wallet']['transactions'].sort(key=lambda entry: entry['category'], reverse=True)
 
@@ -135,10 +139,10 @@ def listsinceblock(s, state, window):
 
     state['wallet']['transactions'].sort(key=lambda entry: entry['nonce'], reverse=True)
 
-    unit = 'BTC'
+    unit = g.coin_unit
     if 'testnet' in state:
         if state['testnet']:
-            unit = 'TNC'
+            unit = g.coin_unit_test
 
     for entry in state['wallet']['transactions']:
         if 'txid' in entry:
@@ -150,30 +154,37 @@ def listsinceblock(s, state, window):
             output_string += "% 17.8f" % delta + unit
             output_string += " " + "% 17.8f" % entry['cumulative_balance'] + unit
             state['wallet']['view_string'].append(output_string)
+            if delta < 0:
+                state['wallet']['view_colorpair'].append(3)
+            else:
+                state['wallet']['view_colorpair'].append(1)
 
             output_string = entry['txid'].rjust(74)
             state['wallet']['view_string'].append(output_string)
+            state['wallet']['view_colorpair'].append(0)
 
             if 'address' in entry: # TODO: more sanity checking here
                 output_string = "          " + entry['category'].ljust(15) + entry['address']
             else:
                 output_string = "          unknown transaction type"
             state['wallet']['view_string'].append(output_string)
+            state['wallet']['view_colorpair'].append(0)
 
             state['wallet']['view_string'].append("")
+            state['wallet']['view_colorpair'].append(0)
 
     if state['mode'] == "wallet":
-        wallet.draw_window(state, window)
+        wallet.draw_window(state, window, rpc_queue)
 
 def lastblocktime(s, state, window):
     state['lastblocktime'] = s['lastblocktime']
 
-def txid(s, state, window):
+def txid(s, state, window, rpc_queue):
     if s['size'] < 0:
         if 'tx' in state:
             state.pop('tx')
         if state['mode'] == 'tx':
-            tx.draw_window(state, window)
+            tx.draw_window(state, window, rpc_queue)
         return False
 
     state['tx'] = {
@@ -190,7 +201,7 @@ def txid(s, state, window):
 
     for vin in s['vin']:
         if 'coinbase' in vin:
-            state['tx']['vin'].append({'coinbase':  vin['coinbase']})
+            state['tx']['vin'].append({'coinbase': vin['coinbase']})
         elif 'txid' in vin:
             if 'prev_tx' in vin:
                 state['tx']['vin'].append({'txid': vin['txid'], 'vout': vin['vout'], 'prev_tx': vin['prev_tx']})
@@ -200,10 +211,11 @@ def txid(s, state, window):
     state['tx']['total_outputs'] = 0
     for vout in s['vout']:
         if 'value' in vout:
+            buffer_string = "% 3d" % vout['n'] + "."
             if vout['scriptPubKey']['type'] == "pubkeyhash":
-                buffer_string = "% 14.8f" % vout['value'] + ": " + vout['scriptPubKey']['addresses'][0]
+                buffer_string += "% 14.8f" % vout['value'] + ": " + vout['scriptPubKey']['addresses'][0]
             else:
-                buffer_string = "% 14.8f" % vout['value'] + ": " + vout['scriptPubKey']['asm']
+                buffer_string += "% 14.8f" % vout['value'] + ": " + vout['scriptPubKey']['asm']
 
             if 'confirmations' in s:
                 if 'spent' in vout:
@@ -224,41 +236,41 @@ def txid(s, state, window):
         state['tx']['confirmations'] = s['confirmations']
 
     if state['mode'] == 'tx':
-        tx.draw_window(state, window)
+        tx.draw_window(state, window, rpc_queue)
 
-def consolecommand(s, state, window):
+def consolecommand(s, state, window, rpc_queue):
     state['console']['cbuffer'].append(s['consolecommand'])
     state['console']['rbuffer'].append(s['consoleresponse'])
     state['console']['offset'] = 0
     if state['mode'] == "console":
-        console.draw_window(state, window)
+        console.draw_window(state, window, rpc_queue)
 
 def estimatefee(s, state, window):
     state['estimatefee'] = s['estimatefee']
 
-def queue(state, window, interface_queue):
+def queue(state, window, interface_queue, rpc_queue=None):
     while True:
         try:
             s = interface_queue.get(False)
         except Queue.Empty:
             return False
 
-        if 'resize' in s: resize(s, state, window)
-        elif 'getinfo' in s: getinfo(s, state, window)
+        if 'resize' in s: resize(s, state, window, rpc_queue)
+        elif 'getinfo' in s: getinfo(s, state, window, rpc_queue)
         elif 'getconnectioncount' in s: getconnectioncount(s, state, window)
         elif 'getbalance' in s: getbalance(s, state, window)
         elif 'getunconfirmedbalance' in s: getunconfirmedbalance(s, state, window)
-        elif 'getblock' in s: getblock(s, state, window)
+        elif 'getblock' in s: getblock(s, state, window, rpc_queue)
         elif 'coinbase' in s: coinbase(s, state, window)
-        elif 'getnetworkhashps' in s: getnetworkhashps(s, state, window)
-        elif 'getnettotals' in s: getnettotals(s, state, window)
+        elif 'getnetworkhashps' in s: getnetworkhashps(s, state, window, rpc_queue)
+        elif 'getnettotals' in s: getnettotals(s, state, window, rpc_queue)
         elif 'getmininginfo' in s: getmininginfo(s, state, window)
-        elif 'getpeerinfo' in s: getpeerinfo(s, state, window)
-        elif 'getchaintips' in s: getchaintips(s, state, window)
-        elif 'listsinceblock' in s: listsinceblock(s, state, window)
+        elif 'getpeerinfo' in s: getpeerinfo(s, state, window, rpc_queue)
+        elif 'getchaintips' in s: getchaintips(s, state, window, rpc_queue)
+        elif 'listsinceblock' in s: listsinceblock(s, state, window, rpc_queue)
         elif 'lastblocktime' in s: lastblocktime(s, state, window)
-        elif 'txid' in s: txid(s, state, window)
-        elif 'consolecommand' in s: consolecommand(s, state, window)
+        elif 'txid' in s: txid(s, state, window, rpc_queue)
+        elif 'consolecommand' in s: consolecommand(s, state, window, rpc_queue)
         elif 'estimatefee' in s: estimatefee(s, state, window)
 
         elif 'stop' in s:

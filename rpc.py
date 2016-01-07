@@ -1,17 +1,20 @@
 #!/usr/bin/env python
-from bitcoinrpc.authproxy import AuthServiceProxy
+from anycoinrpc.authproxy import AuthServiceProxy
+import global_mod as g
 import curses, time, Queue, decimal
+import sys, os
 
 def log(logfile, loglevel, string):
     if loglevel > 0: # hardcoded loglevel here
         return False
     from datetime import datetime
-    now = datetime.utcnow()
+    #now = datetime.utcnow()
+    now = datetime.now()
     string_time = now.strftime('%Y-%m-%d %H:%M:%S.')
     millisecond = now.microsecond / 1000
     string_time += "%03d" % millisecond
 
-    with open(logfile, 'a') as f:
+    with open(os.path.abspath(os.path.dirname(sys.argv[0])) + '/' + logfile, 'a') as f:
         f.write(string_time + ' LL' + str(loglevel) + ' ' + string + '\n')
     
 def stop(interface_queue, error_message):
@@ -26,9 +29,9 @@ def init(interface_queue, cfg):
         if cfg.get('rpcport'):
             rpcport = cfg.get('rpcport')
         elif cfg.get('testnet') == "1":
-            rpcport = '18332'
+            rpcport = str(g.rpc_port_test)
         else:
-            rpcport = '8332'
+            rpcport = str(g.rpc_port)
 
         if cfg.get('rpcssl') == "1":
             protocol = "https"
@@ -42,24 +45,25 @@ def init(interface_queue, cfg):
 
     try:
         rpchandle = AuthServiceProxy(rpcurl, None, 500)
+        log('debug.log', 2, 'rpchandle: ' + str(rpchandle))
         return rpchandle
     except:
         return False
 
 def rpcrequest(rpchandle, request, interface_queue, *args):
     try:
-        log('debug.log', 2, 'rpcrequest: ' + request)
+        log('debug.log', 2, 'rpcrequest: ' + request + ', args: ' + str(args))
 
         request_time = time.time()
         response = getattr(rpchandle, request)(*args)
         request_time_delta = time.time() - request_time
 
         log('debug.log', 3, request + ' done in ' + "%.3f" % request_time_delta + 's')
-
+        log('debug.log', 2, request + ' response: ' + str(response))
         if interface_queue:
             interface_queue.put({request: response})
 
-        return response
+	return response
     except:
         log('debug.log', 2, request + ' failed')
         return False
@@ -90,7 +94,7 @@ def loop(interface_queue, rpc_queue, cfg):
     # TODO: add error checking for broken config, improve exceptions
     rpchandle = init(interface_queue, cfg)
     if not rpchandle: # TODO: this doesn't appear to trigger, investigate
-        stop(interface_queue, "failed to connect to bitcoind (handle not obtained)")
+        stop(interface_queue, "failed to connect to " + g.rpc_deamon + " (handle not obtained)")
         return True
 
     update_interval = 2 # seconds
@@ -99,7 +103,7 @@ def loop(interface_queue, rpc_queue, cfg):
     
     info = rpcrequest(rpchandle, 'getinfo', interface_queue)
     if not info:
-        stop(interface_queue, "failed to connect to bitcoind (getinfo failed)")
+        stop(interface_queue, "failed to connect to " + g.rpc_deamon + " (getinfo failed)")
         return True
 
     log('debug.log', 1, 'CONNECTED')
@@ -155,6 +159,7 @@ def loop(interface_queue, rpc_queue, cfg):
         elif 'txid' in s:
             try:
                 tx = rpcrequest(rpchandle, 'getrawtransaction', False, s['txid'], 1)
+                log('debug.log', 2, 'getrawtransaction request returned: ' + str(tx))
                 tx['size'] = len(tx['hex'])/2
 
                 if 'coinbase' in tx['vin'][0]: # should always be at least 1 vin
@@ -273,9 +278,9 @@ def loop(interface_queue, rpc_queue, cfg):
                         except: pass 
 
                     try:
-                        nethash144 = rpcrequest(rpchandle, 'getnetworkhashps', False, 144)
+                        nethash144 = rpcrequest(rpchandle, 'getnetworkhashps', False, g.blocks_per_day)
                         nethash2016 = rpcrequest(rpchandle, 'getnetworkhashps', False, 2016)
-                        interface_queue.put({'getnetworkhashps': {'blocks': 144, 'value': nethash144}})
+                        interface_queue.put({'getnetworkhashps': {'blocks': g.blocks_per_day, 'value': nethash144}})
                         interface_queue.put({'getnetworkhashps': {'blocks': 2016, 'value': nethash2016}})
                     except: pass
 

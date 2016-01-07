@@ -4,7 +4,7 @@ import curses, time
 import global_mod as g
 import footer
 
-def draw_window(state, window):
+def draw_window(state, window, rpc_queue=None):
     window.clear()
     window.refresh()
 
@@ -19,10 +19,11 @@ def draw_window(state, window):
     else:
         win_header.addstr(0, 1, "no chain tip information loaded", curses.A_BOLD + curses.color_pair(3))
         win_header.addstr(1, 1, "press 'F' to refresh", curses.A_BOLD)
-        win_header.addstr(2, 1, "(note that bitcoind 0.9.3 and older do not support this feature)", curses.A_BOLD)
+        if g.coin_unit == 'BTC':
+            win_header.addstr(2, 1, "(note that bitcoind 0.9.3 and older do not support this feature)", curses.A_BOLD)
 
     win_header.refresh()
-    footer.draw_window(state)
+    footer.draw_window(state, rpc_queue)
 
 def draw_tips(state):
     window_height = state['y'] - 4

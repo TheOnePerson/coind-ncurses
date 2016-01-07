@@ -5,7 +5,7 @@ import global_mod as g
 import getstr
 import footer
 
-def draw_window(state, window):
+def draw_window(state, window, rpc_queue):
     window.clear()
     window.refresh()
     win_header = curses.newwin(1, 76, 0, 0)
@@ -16,7 +16,7 @@ def draw_window(state, window):
     if len(state['console']['rbuffer']):
         draw_buffer(state)
 
-    footer.draw_window(state)
+    footer.draw_window(state, rpc_queue)
 
 def draw_buffer(state):
     window_height = state['y'] - 3
@@ -71,3 +71,5 @@ def draw_input_box(state, rpc_queue):
     else:
         s = {'consolecommand': entered_command}
         rpc_queue.put(s)
+        footer.draw_window(state, rpc_queue)
+        

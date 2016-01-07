@@ -4,7 +4,7 @@ import curses, time, math
 import global_mod as g
 import footer
 
-def draw_window(state, old_window):
+def draw_window(state, old_window, rpc_queue):
     # TODO: only draw parts that actually changed
     old_window.clear()
     old_window.refresh()
@@ -13,13 +13,13 @@ def draw_window(state, old_window):
     if 'version' in state:
         if state['testnet'] == 1:
             color = curses.color_pair(2)
-            window.addstr(1, 1, "bitcoind v" + state['version'] + " (testnet)", color + curses.A_BOLD)
-            unit = 'TNC'
+            window.addstr(1, 1, g.rpc_deamon + " v" + state['version'] + " (testnet)", color + curses.A_BOLD)
+            unit = g.coin_unit_test
         else:
             color = curses.color_pair(1)
-            window.addstr(1, 1, "bitcoind v" + state['version'] + " ", color + curses.A_BOLD)
-            unit = 'BTC'
-        window.addstr(0, 1, "bitcoind-ncurses " + g.version, color + curses.A_BOLD)
+            window.addstr(1, 1, g.rpc_deamon + " v" + state['version'] + " ", color + curses.A_BOLD)
+            unit = g.coin_unit
+        window.addstr(0, 1, g.rpc_deamon + "-ncurses " + g.version, color + curses.A_BOLD)
 
     if 'peers' in state:
         if state['peers'] > 0:
@@ -44,21 +44,18 @@ def draw_window(state, old_window):
                 window.attrset(curses.A_REVERSE + curses.color_pair(5) + curses.A_BOLD)
                 blockdata.pop('new')
 
-            window.addstr(3, 1, height.zfill(6) + ": " + str(blockdata['hash']))
+            window.addstr(3, 1, height.zfill(7) + ": " + str(blockdata['hash']))
             window.addstr(4, 1, str(blockdata['size']) + " bytes (" + str(blockdata['size']/1024) + " KB)       ")
             tx_count = len(blockdata['tx'])
             bytes_per_tx = blockdata['size'] / tx_count
             window.addstr(5, 1, "Transactions: " + str(tx_count) + " (" + str(bytes_per_tx) + " bytes/tx)")
 
             if 'coinbase_amount' in blockdata:
-                if state['mininginfo']['blocks'] < 210000:
-                    block_subsidy = 50
-                elif state['mininginfo']['blocks'] < 420000:
-                    block_subsidy = 25
-
-                if block_subsidy: # this will fail after block 420,000. TODO: stop being lazy and do it properly
-                    coinbase_amount = blockdata['coinbase_amount']
-                    total_fees = coinbase_amount - block_subsidy # assumption, mostly correct
+                block_subsidy = float(g.reward_base / (2 ** (state['mininginfo']['blocks'] // g.halving_blockamount)))
+                
+                if block_subsidy:
+                    coinbase_amount = float(blockdata['coinbase_amount'])
+                    total_fees = float(coinbase_amount) - block_subsidy # assumption, mostly correct
 
                     if coinbase_amount > 0:
                         fee_percentage = "%0.2f" % ((total_fees / coinbase_amount) * 100)
@@ -75,7 +72,7 @@ def draw_window(state, old_window):
                         window.addstr(8, 1, "Fees: " + total_fees_str + " (avg " +  fees_per_tx + ", ~" + fees_per_kb + ")")
 
 
-            window.addstr(4, 37, "Block timestamp: " + time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(blockdata['time'])))
+            window.addstr(4, 38, "Block timestamp: " + time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(blockdata['time'])))
 
             if state['lastblocktime'] == 0:
                 recvdelta_string = "        "
@@ -96,7 +93,7 @@ def draw_window(state, old_window):
             else:
                 stampdelta_string = "     (stamp in future)"
 
-            window.addstr(5, 37, "Age: " + recvdelta_string + " " + stampdelta_string)
+            window.addstr(5, 38, "Age: " + recvdelta_string + " " + stampdelta_string)
 
             if 'chainwork' in blockdata:
                 log2_chainwork = math.log(int(blockdata['chainwork'], 16), 2)
@@ -112,7 +109,7 @@ def draw_window(state, old_window):
             pass
         elif block_avg == 2016:
             index += 1
-        elif block_avg == 144:
+        elif block_avg == g.blocks_per_day:
             index += 2
         else:
             break
@@ -134,11 +131,11 @@ def draw_window(state, old_window):
             rate /= 10**6
             suffix = " MH/s"
         rate_string = "{:,d}".format(rate) + suffix
-        window.addstr(index, 37, "Hashrate (" + str(block_avg).rjust(4) + "): " + rate_string.rjust(13))
+        window.addstr(index, 38, "Hashrate (" + str(block_avg).rjust(4) + "): " + rate_string.rjust(13))
         index += 1
 
         pooledtx = state['mininginfo']['pooledtx']
-        window.addstr(14, 37, "Mempool transactions: " + "% 5d" % pooledtx)
+        window.addstr(14, 38, "Mempool transactions: " + "% 5d" % pooledtx)
 
     if 'totalbytesrecv' in state:
         recvmb = "%.2f" % (state['totalbytesrecv']*1.0/1048576)
@@ -152,7 +149,7 @@ def draw_window(state, old_window):
             if item['value'] > 0:
                 string += " (" + str(item['blocks']) + ")" + "%4.2f" % (item['value']*1000) + "m" + unit
         if len(string) > 12:
-            window.addstr(15, 37, string)
+            window.addstr(15, 38, string)
 
     if 'mininginfo' in state:
         errors = state['mininginfo']['errors']
@@ -165,4 +162,4 @@ def draw_window(state, old_window):
             window.addstr(y+1, 1, errors[72:142].rjust(72), curses.color_pair(5) + curses.A_BOLD + curses.A_REVERSE)
 
     window.refresh()
-    footer.draw_window(state)
+    footer.draw_window(state, rpc_queue)

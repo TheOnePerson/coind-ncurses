@@ -5,16 +5,16 @@ import global_mod as g
 import getstr
 import footer
 
-def draw_window(state, window):
+def draw_window(state, window, rpc_queue):
     # TODO: add transaction locktime, add sequence to inputs
     window.clear()
     window.refresh()
     win_header = curses.newwin(3, 75, 0, 0)
 
-    unit = 'BTC'
+    unit = g.coin_unit
     if 'testnet' in state:
         if state['testnet']:
-            unit = 'TNC'
+            unit = g.coin_unit_test
     if 'tx' in state:
         win_header.addstr(0, 1, "txid: " + state['tx']['txid'], curses.A_BOLD)
         win_header.addstr(1, 1, str(state['tx']['size']) + " bytes (" + str(state['tx']['size']/1024) + " KB)       ", curses.A_BOLD)
@@ -26,7 +26,13 @@ def draw_window(state, window):
                     fee = 0
                     output_string += " (coinbase)"
                 else: # Verbose mode only
-                    fee = state['tx']['total_inputs'] - state['tx']['total_outputs']
+                    try:
+                        if int(state['tx']['total_inputs']) == 0:
+                            fee = 0
+                        else:			    
+                            fee = state['tx']['total_inputs'] - state['tx']['total_outputs']
+                    except:
+                        fee = state['tx']['total_inputs'] - state['tx']['total_outputs']
                     output_string += " + " + "%.8f" % fee + " " + unit + " fee"
             else:
                 output_string += " + unknown fee"
@@ -43,12 +49,15 @@ def draw_window(state, window):
         draw_outputs(state)
 
     else:
-        win_header.addstr(0, 1, "no transaction loaded", curses.A_BOLD + curses.color_pair(3))
-        win_header.addstr(1, 1, "if you have entered one, consider running bitcoind with -txindex", curses.A_BOLD)
-        win_header.addstr(2, 1, "press 'G' to enter a txid", curses.A_BOLD)
+        if rpc_queue.qsize() > 0:
+            win_header.addstr(0, 1, "...waiting for transaction information being processed...", curses.A_BOLD + curses.color_pair(3))
+        else:
+            win_header.addstr(0, 1, "no transaction loaded or no transaction information found", curses.A_BOLD + curses.color_pair(3))
+            win_header.addstr(1, 1, "if you have entered one, consider running " + g.rpc_deamon + " with -txindex", curses.A_BOLD)
+            win_header.addstr(2, 1, "press 'G' to enter a txid", curses.A_BOLD)
 
     win_header.refresh()
-    footer.draw_window(state)
+    footer.draw_window(state, rpc_queue)
 
 def draw_inputs(state):
     window_height = (state['y'] - 4) / 2
@@ -150,7 +159,7 @@ def draw_input_window(state, window, rpc_queue):
         if state['testnet']: color = curses.color_pair(2)
 
     window.clear()
-    window.addstr(0, 1, "bitcoind-ncurses " + g.version + " [transaction input mode]", color + curses.A_BOLD)
+    window.addstr(0, 1, g.rpc_deamon + "-ncurses " + g.version + " [transaction input mode]", color + curses.A_BOLD)
     window.addstr(1, 1, "please enter txid", curses.A_BOLD)
     window.refresh()
 

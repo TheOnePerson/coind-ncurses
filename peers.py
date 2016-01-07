@@ -4,14 +4,14 @@ import curses, time
 import global_mod as g
 import footer
 
-def draw_window(state, window):
+def draw_window(state, window, rpc_queue=None):
     window.clear()
     window.refresh()
 
     win_header = curses.newwin(3, 75, 0, 0)
 
     if 'peerinfo' in state:
-        win_header.addstr(0, 1, "connected peers: " + str(len(state['peerinfo'])).ljust(10) + "                 (UP/DOWN: scroll, P: refresh)", curses.A_BOLD)
+        win_header.addstr(0, 1, "connected peers: " + str(len(state['peerinfo'])).ljust(11) + "                 (UP/DOWN: scroll, P: refresh)", curses.A_BOLD)
         win_header.addstr(2, 1, "  Node IP              Version        Recv      Sent         Time  Height", curses.A_BOLD + curses.color_pair(5))
         draw_peers(state)
 
@@ -20,7 +20,7 @@ def draw_window(state, window):
         win_header.addstr(1, 1, "press 'P' to refresh", curses.A_BOLD)
 
     win_header.refresh()
-    footer.draw_window(state)
+    footer.draw_window(state, rpc_queue)
 
 def draw_peers(state):
     window_height = state['y'] - 4
@@ -48,19 +48,19 @@ def draw_peers(state):
                         # syncnodes are outgoing only
                         win_peers.addstr(index-offset, 1, 'S')
 
-                addr_str = peer['addr'].replace(".onion","").replace(":8333","").replace(":18333","").strip("[").strip("]")
+                addr_str = peer['addr'].replace(".onion","").replace(":" + g.node_port,"").replace(":" + g.node_port_test,"").strip("[").strip("]")
 
                 # truncate long ip addresses (ipv6)
                 addr_str = (addr_str[:17] + '...') if len(addr_str) > 20 else addr_str
 
                 win_peers.addstr(index-offset, 3, addr_str)
-                win_peers.addstr(index-offset, 24, peer['subver'].strip("/").replace("Satoshi:","Sat")[:10])
+                win_peers.addstr(index-offset, 24, peer['subver'].strip("/").replace("Satoshi:","Sat")[:11])
 
                 mbrecv = "% 7.1f" % ( float(peer['bytesrecv']) / 1048576 )
                 mbsent = "% 7.1f" % ( float(peer['bytessent']) / 1048576 )
 
-                win_peers.addstr(index-offset, 34, mbrecv + 'MB')
-                win_peers.addstr(index-offset, 44, mbsent + 'MB')
+                win_peers.addstr(index-offset, 35, mbrecv + 'MB')
+                win_peers.addstr(index-offset, 45, mbsent + 'MB')
 
                 timedelta = int(time.time() - peer['conntime'])
                 m, s = divmod(timedelta, 60)
@@ -76,9 +76,9 @@ def draw_peers(state):
                 time_string += "%02d" % m + ":"
                 time_string += "%02d" % s
 
-                win_peers.addstr(index-offset, 54, time_string.rjust(12))
+                win_peers.addstr(index-offset, 55, time_string.rjust(12))
 
                 if 'syncheight' in peer:
-                    win_peers.addstr(index-offset, 68, str(peer['syncheight']).rjust(6))
+                    win_peers.addstr(index-offset, 69, str(peer['syncheight']).rjust(6))
 
     win_peers.refresh()

@@ -5,7 +5,7 @@ import global_mod as g
 import getstr
 import footer
 
-def draw_window(state, window):
+def draw_window(state, window, rpc_queue=None):
     window.clear()
     window.refresh()
     win_header = curses.newwin(5, 75, 0, 0)
@@ -35,7 +35,7 @@ def draw_window(state, window):
         win_header.addstr(1, 1, "press 'G' to enter a block hash, height, or timestamp", curses.A_BOLD)
 
     win_header.refresh()
-    footer.draw_window(state)
+    footer.draw_window(state, rpc_queue)
 
 def draw_transactions(state):
     window_height = state['y'] - 6
@@ -75,7 +75,7 @@ def draw_input_window(state, window, rpc_queue):
         if state['testnet']: color = curses.color_pair(2)
 
     window.clear()
-    window.addstr(0, 1, "bitcoind-ncurses " + g.version + " [block input mode]", color + curses.A_BOLD)
+    window.addstr(0, 1, g.rpc_deamon + "-ncurses " + g.version + " [block input mode]", color + curses.A_BOLD)
     window.addstr(1, 1, "please enter block height or hash", curses.A_BOLD)
     window.addstr(2, 1, "or timestamp (accepted formats: YYYY-MM-DD hh:mm:ss, YYYY-MM-DD)", curses.A_BOLD)
     window.refresh()

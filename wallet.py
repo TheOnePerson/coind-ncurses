@@ -4,15 +4,15 @@ import curses
 import global_mod as g
 import footer
 
-def draw_window(state, window):
+def draw_window(state, window, rpc_queue=None):
     window.clear()
     window.refresh()
     win_header = curses.newwin(2, 76, 0, 0)
 
-    unit = 'BTC'
+    unit = g.coin_unit
     if 'testnet' in state:
         if state['testnet']:
-            unit = 'TNC'
+            unit = g.coin_unit_test
 
     if 'wallet' in state:
         if 'balance' in state:
@@ -26,11 +26,14 @@ def draw_window(state, window):
         draw_transactions(state)
 
     else:
-        win_header.addstr(0, 1, "no wallet information loaded. -disablewallet, perhaps?", curses.A_BOLD + curses.color_pair(3))
-        win_header.addstr(1, 1, "press 'W' to refresh", curses.A_BOLD)
+        if rpc_queue.qsize() > 0:
+            win_header.addstr(0, 1, "...waiting for wallet information being processed...", curses.A_BOLD + curses.color_pair(3))
+        else:
+            win_header.addstr(0, 1, "no wallet information loaded. -disablewallet, perhaps?", curses.A_BOLD + curses.color_pair(3))
+            win_header.addstr(1, 1, "press 'W' to refresh", curses.A_BOLD)
 
     win_header.refresh()
-    footer.draw_window(state)
+    footer.draw_window(state, rpc_queue)
 
 def draw_transactions(state):
     window_height = state['y'] - 3
@@ -48,7 +51,7 @@ def draw_transactions(state):
                 if condition:
                     win_transactions.addstr(index+1-offset, 1, "...")
                 else:
-                    win_transactions.addstr(index+1-offset, 1, state['wallet']['view_string'][index])
+                    win_transactions.addstr(index+1-offset, 1, state['wallet']['view_string'][index], curses.color_pair(state['wallet']['view_colorpair'][index]))
 
                 if index == (state['wallet']['cursor']*4 + 1):
                     win_transactions.addstr(index+1-offset, 1, ">", curses.A_REVERSE + curses.A_BOLD)

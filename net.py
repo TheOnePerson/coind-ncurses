@@ -4,7 +4,7 @@ import curses, math
 import global_mod as g
 import footer
 
-def draw_window(state, old_window):
+def draw_window(state, old_window, rpc_queue=None):
     old_window.clear()
     old_window.refresh()
     window_height = state['y'] - 1
@@ -65,9 +65,10 @@ def draw_window(state, old_window):
             recv_string = "Down: " + ("%0.1f" % (recv_deltas[-1]*1.0/1024)).rjust(7) + "KB/s"
             sent_string = "Up: " + ("%0.1f" % (sent_deltas[-1]*1.0/1024)).rjust(7) + "KB/s"
             total_string = "Total: " + ("%0.1f" % ((sent_deltas[-1] + recv_deltas[-1])*1.0/1024)).rjust(7) + "KB/s" 
-            window.addstr(chart_height+1, window_width-1-18, total_string, curses.A_BOLD)
-            window.addstr(chart_height+1, window_width-1-38, sent_string, curses.A_BOLD + color_sent)
-            window.addstr(chart_height+1, window_width-1-58, recv_string, curses.A_BOLD + color_recv)
+            # window.addstr(chart_height+1, window_width-1-18, total_string, curses.A_BOLD)
+            window.addstr(chart_height+1, 1, total_string, curses.A_BOLD)
+            window.addstr(chart_height+1, 21, sent_string, curses.A_BOLD + color_sent)
+            window.addstr(chart_height+1, 41, recv_string, curses.A_BOLD + color_recv)
 
     window.refresh()
-    footer.draw_window(state)
+    footer.draw_window(state, rpc_queue)
