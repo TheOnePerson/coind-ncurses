@@ -8,6 +8,11 @@ def getstr(w, y, x):
     window.addstr("> ", curses.A_BOLD + curses.A_BLINK)
     window.refresh()
     window.keypad(True)
+    oldcursor = 0
+    try:
+        oldcursor = curses.curs_set(1)
+    except:
+        pass
 
     while True:
         try:
@@ -18,6 +23,10 @@ def getstr(w, y, x):
             break
 
         if character == curses.KEY_ENTER or character == ord('\n'):
+            break
+
+        elif character == 27:      # ESC
+            result = ""
             break
 
         elif character == curses.KEY_BACKSPACE or character == 127:
@@ -34,5 +43,9 @@ def getstr(w, y, x):
     window.addstr(0, 0, "> ", curses.A_BOLD + curses.color_pair(3))
     window.refresh()
 
+    try:
+        curses.curs_set(oldcursor)
+    except:
+        pass
     window.keypad(False)
     return result

@@ -120,10 +120,12 @@ def listsinceblock(s, state, window, rpc_queue):
 
     state['wallet']['view_string'] = []
     state['wallet']['view_colorpair'] = []
+    state['wallet']['spendings'] = {}
+    state['wallet']['mode'] = 'tx'
 
     state['wallet']['transactions'].sort(key=lambda entry: entry['category'], reverse=True)
 
-    # add cumulative balance field to transactiosn once ordered by time
+    # add cumulative balance field to transactions once ordered by time
     state['wallet']['transactions'].sort(key=lambda entry: entry['time'])
     state['wallet']['transactions'].sort(key=lambda entry: entry['confirmations'], reverse=True)
     cumulative_balance = 0
@@ -149,9 +151,16 @@ def listsinceblock(s, state, window, rpc_queue):
             entry_time = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(entry['time']))
             output_string = entry_time + " %8d" % entry['confirmations'] + " conf"
             delta = entry['amount']
+            # keep track of spendings for later use in addresses view
+            if delta < 0 and 'address' in entry:
+                if str(entry['address']) in state['wallet']['spendings']:
+                    state['wallet']['spendings'][str(entry['address'])] += delta      # TODO: check if fee has to be substracted here also!
+                else:
+                    state['wallet']['spendings'].update({str(entry['address']): delta})
+                
             if 'fee' in entry:
                 delta += entry['fee'] # this fails if not all inputs owned by wallet; could be 'too negative'
-            output_string += "% 17.8f" % delta + unit
+            output_string += "% 17.8f " % delta + unit
             output_string += " " + "% 17.8f" % entry['cumulative_balance'] + unit
             state['wallet']['view_string'].append(output_string)
             if delta < 0:
@@ -172,6 +181,65 @@ def listsinceblock(s, state, window, rpc_queue):
 
             state['wallet']['view_string'].append("")
             state['wallet']['view_colorpair'].append(0)
+
+    if state['mode'] == "wallet":
+        wallet.draw_window(state, window, rpc_queue)
+
+def listreceivedbyaddress(s, state, window, rpc_queue):
+    state['wallet']['addresses'] = s['listreceivedbyaddress']
+    state['wallet']['cursor'] = 0
+    state['wallet']['offset'] = 0
+
+    state['wallet']['addresses_view_string'] = []
+    state['wallet']['addresses_view_colorpair'] = []
+    state['wallet']['mode'] = 'addresses'
+
+    state['wallet']['addresses'].sort(key=lambda entry: 999999 if entry['confirmations'] == 0 else entry['confirmations'], reverse=False)
+
+    unit = g.coin_unit
+    if 'testnet' in state:
+        if state['testnet']:
+            unit = g.coin_unit_test
+
+    for entry in state['wallet']['addresses']:
+        if 'address' in entry:
+            amount_in = entry['amount']
+            # find spendings for address
+            if 'spendings' in state['wallet']:
+                if str(entry['address']) in state['wallet']['spendings']:
+                    amount_out = -state['wallet']['spendings'][str(entry['address'])]
+                    amount = entry['amount'] + state['wallet']['spendings'][str(entry['address'])]
+                else:
+                    amount_out = 0.0
+                    amount = entry['amount']
+            else:
+                amount_out = 0.0
+                amount = entry['amount']
+            if amount < 0:
+                amount = 0
+            if amount_out > amount_in:
+                amount_in = amount_out
+            
+            if amount > 0:
+                color = 1
+            else:
+                color = 0
+            output_string = entry['address'] + str("% 17.8f " % amount + unit).rjust(39)
+            state['wallet']['addresses_view_string'].append(output_string)
+            state['wallet']['addresses_view_colorpair'].append(color)
+            
+            output_string = " " + str(str(entry['confirmations']) + " conf").ljust(15)
+            output_string += str(str(len(entry['txids'])) + ' tx').rjust(10)
+            output_string += str("(in:" + "% 1.8f" % amount_in + ", out:" + "% 1.8f" % amount_out + ")").rjust(44)
+            state['wallet']['addresses_view_string'].append(output_string)
+            state['wallet']['addresses_view_colorpair'].append(0)
+
+            output_string = " " + entry['account'].ljust(36) 
+            state['wallet']['addresses_view_string'].append(output_string)
+            state['wallet']['addresses_view_colorpair'].append(0)
+
+            state['wallet']['addresses_view_string'].append("")
+            state['wallet']['addresses_view_colorpair'].append(0)
 
     if state['mode'] == "wallet":
         wallet.draw_window(state, window, rpc_queue)
@@ -268,6 +336,7 @@ def queue(state, window, interface_queue, rpc_queue=None):
         elif 'getpeerinfo' in s: getpeerinfo(s, state, window, rpc_queue)
         elif 'getchaintips' in s: getchaintips(s, state, window, rpc_queue)
         elif 'listsinceblock' in s: listsinceblock(s, state, window, rpc_queue)
+        elif 'listreceivedbyaddress' in s: listreceivedbyaddress(s, state, window, rpc_queue)
         elif 'lastblocktime' in s: lastblocktime(s, state, window)
         elif 'txid' in s: txid(s, state, window, rpc_queue)
         elif 'consolecommand' in s: consolecommand(s, state, window, rpc_queue)

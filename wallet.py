@@ -21,9 +21,14 @@ def draw_window(state, window, rpc_queue=None):
                 if state['unconfirmedbalance'] != 0:
                     balance_string += " (+" + "%0.8f" % state['unconfirmedbalance'] + " unconf)"
             window.addstr(0, 1, balance_string, curses.A_BOLD)
-            window.addstr(0, 63, "(W: refresh)", curses.A_BOLD)
+            
 
-        draw_transactions(state)
+        if state['wallet']['mode'] == 'tx':
+            window.addstr(0, 44, "(W: refresh, A: list addresses)", curses.A_BOLD)
+            draw_transactions(state)
+        else:
+            window.addstr(0, 41, "(A: refresh, W: list transactions)", curses.A_BOLD)
+            draw_addresses(state)
 
     else:
         if rpc_queue.qsize() > 0:
@@ -39,7 +44,8 @@ def draw_transactions(state):
     window_height = state['y'] - 3
     win_transactions = curses.newwin(window_height, 76, 2, 0)
 
-    win_transactions.addstr(0, 1, "transactions:                               (UP/DOWN: scroll, ENTER: view)", curses.A_BOLD + curses.color_pair(5))
+    
+    win_transactions.addstr(0, 1, str(str(len(state['wallet']['view_string'])/4) + " transactions:").ljust(45) + "(UP/DOWN: scroll, ENTER: view)", curses.A_BOLD + curses.color_pair(5))
 
     offset = state['wallet']['offset']
 
@@ -57,3 +63,27 @@ def draw_transactions(state):
                     win_transactions.addstr(index+1-offset, 1, ">", curses.A_REVERSE + curses.A_BOLD)
 
     win_transactions.refresh()
+
+def draw_addresses(state):
+    window_height = state['y'] - 3
+    win_addresses = curses.newwin(window_height, 76, 2, 0)
+    offset = state['wallet']['offset']
+
+    if 'addresses_view_string' in state['wallet']:
+
+        win_addresses.addstr(0, 1, str(str(len(state['wallet']['addresses_view_string'])/4) + " addresses:").ljust(58) + "(UP/DOWN: scroll)", curses.A_BOLD + curses.color_pair(5))
+
+        for index in xrange(offset, offset+window_height-1):
+            if index < len(state['wallet']['addresses_view_string']):
+                    condition = (index == offset+window_height-2) and (index+1 < len(state['wallet']['addresses_view_string']))
+                    condition = condition or ( (index == offset) and (index > 0) )
+
+                    if condition:
+                        win_addresses.addstr(index+1-offset, 1, "...")
+                    else:
+                        win_addresses.addstr(index+1-offset, 1, state['wallet']['addresses_view_string'][index], curses.color_pair(state['wallet']['addresses_view_colorpair'][index]))
+
+    else:
+        win_addresses.addstr(1, 1, "...waiting for address information being processed...", curses.A_BOLD + curses.color_pair(3))
+
+    win_addresses.refresh()

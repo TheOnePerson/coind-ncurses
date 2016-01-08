@@ -210,6 +210,9 @@ def loop(interface_queue, rpc_queue, cfg):
         elif 'listsinceblock' in s:
             rpcrequest(rpchandle, 'listsinceblock', interface_queue)
 
+        elif 'listreceivedbyaddress' in s:
+            rpcrequest(rpchandle, 'listreceivedbyaddress', interface_queue, 0, True)
+
         elif 'getchaintips' in s:
             rpcrequest(rpchandle, 'getchaintips', interface_queue)
 
