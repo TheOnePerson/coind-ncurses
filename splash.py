@@ -2,33 +2,35 @@
 import curses
 import global_mod as g
 
-if g.coin_unit == 'BTC':
-    splash_array = [
-        "  BB            BB                                   BB",
-        "  BB       BB   BB    BBBB   BBBBB   BB  BB BB       BB",
-        "  BBBBB        BBBB  BB     BB   BB      BBB BB   BBBBB",
-        "  BB   BB  BB   BB   BB     BB   BB  BB  BB  BB  BB  BB",
-        "  BBB  BB  BB   BB   BB     BB   BB  BB  BB  BB  BB  BB",
-        "  BB BBB   BB    BB   BBBB   BBBBB   BB  BB  BB   BBBBB",
-    ]
-elif g.coin_unit == 'LTC':
-    splash_array = [
-        "  BB       BB                                            BB",
-        "  BB  BB   BB    BBBB    BBBB   BBBBB   BB  BB BBB       BB",
-        "  BB      BBBB  BB  BB  BB     BB   BB      BBB  BB   BBBBB",
-        "  BB  BB   BB   BBBBB   BB     BB   BB  BB  BB   BB  BB  BB",
-        "  BB  BB   BB   BB      BB     BB   BB  BB  BB   BB  BB  BB",
-        "  BB  BB    BB   BBBB    BBBB   BBBBB   BB  BB   BB   BBBBB",
-    ]
-else:
-    splash_array = [
-        "                                               BB",
-        "               BBBB   BBBBB   BB  BB BBB       BB",
-        "              BB     BB   BB      BBB  BB   BBBBB",
-        "              BB     BB   BB  BB  BB   BB  BB  BB",
-        "              BB     BB   BB  BB  BB   BB  BB  BB",
-        "  BB  BB  BB   BBBB   BBBBB   BB  BB   BB   BBBBB",
-    ]
+def get_splash_array():
+    if g.coinmode == 'BTC':
+        global splash_array
+        splash_array = [
+            "  BB            BB                                   BB",
+            "  BB       BB   BB    BBBB   BBBBB   BB  BB BB       BB",
+            "  BBBBB        BBBB  BB     BB   BB      BBB BB   BBBBB",
+            "  BB   BB  BB   BB   BB     BB   BB  BB  BB  BB  BB  BB",
+            "  BBB  BB  BB   BB   BB     BB   BB  BB  BB  BB  BB  BB",
+            "  BB BBB   BB    BB   BBBB   BBBBB   BB  BB  BB   BBBBB",
+        ]
+    elif g.coinmode == 'LTC':
+        splash_array = [
+            "  BB       BB                                            BB",
+            "  BB  BB   BB    BBBB    BBBB   BBBBB   BB  BB BBB       BB",
+            "  BB      BBBB  BB  BB  BB     BB   BB      BBB  BB   BBBBB",
+            "  BB  BB   BB   BBBBB   BB     BB   BB  BB  BB   BB  BB  BB",
+            "  BB  BB   BB   BB      BB     BB   BB  BB  BB   BB  BB  BB",
+            "  BB  BB    BB   BBBB    BBBB   BBBBB   BB  BB   BB   BBBBB",
+        ]
+    else:
+        splash_array = [
+            "                                               BB",
+            "               BBBB   BBBBB   BB  BB BBB       BB",
+            "              BB     BB   BB      BBB  BB   BBBBB",
+            "              BB     BB   BB  BB  BB   BB  BB  BB",
+            "              BB     BB   BB  BB  BB   BB  BB  BB",
+            "  BB  BB  BB   BBBB   BBBBB   BB  BB   BB   BBBBB",
+        ]
 
 def draw_window(state, window, rpc_queue):
     window.clear()
@@ -40,6 +42,7 @@ def draw_window(state, window, rpc_queue):
         if state['testnet']: color = curses.color_pair(2)
         else: color = curses.color_pair(1)
 
+    get_splash_array()
     y = 0
     while y < len(splash_array):
         x = 0

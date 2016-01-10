@@ -35,10 +35,20 @@ if __name__ == '__main__':
     # parse commandline arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config",
-                        help="path to config file [" + g.coin_smallname + ".conf]",
-                        default=g.coin_smallname + ".conf")
+                        help="path to config file (i.e. bitcoin.conf|litecoin.conf)",
+                        default="bitcoin.conf")
+    parser.add_argument("-m", "--mode",
+                        help="coin mode, either BTC or LTC",
+                        default="BTC")
     args = parser.parse_args()
 
+    # get coin mode
+    try:
+        g.coinmode = args.mode.upper()
+    except:
+        g.coinmode = g.get_default_coinmode()
+    g.init_coinmode()
+    
     # parse config file
     try:
         cfg = config.read_file(args.config)
