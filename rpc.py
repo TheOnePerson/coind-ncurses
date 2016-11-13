@@ -26,9 +26,14 @@ def init(interface_queue, cfg):
         rpcpassword = cfg.get('rpcpassword')
         rpcip = cfg.get('rpcip', '127.0.0.1')
 
+        if cfg.get('testnet') == "1":
+            g.testnet = 1
+        else:
+            g.testnet = 0
+            
         if cfg.get('rpcport'):
             rpcport = cfg.get('rpcport')
-        elif cfg.get('testnet') == "1":
+        elif g.testnet:
             rpcport = str(g.rpc_port_test)
         else:
             rpcport = str(g.rpc_port)

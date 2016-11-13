@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-import curses, time, binascii
+import curses, binascii
 
 import global_mod as g
-import getstr
+from getstr import UserInput
 import footer
 
 def draw_window(state, window, rpc_queue):
@@ -43,7 +43,7 @@ def draw_window(state, window, rpc_queue):
         else:
             win_header.addstr(2, 1, "unconfirmed", curses.A_BOLD)
 
-        win_header.addstr(2, 56, "(G: enter txid)", curses.A_BOLD)
+        win_header.addstr(2, 1, str("(V: verbose, G: enter txid)").rjust(73), curses.A_BOLD)
 
         draw_inputs(state)
         draw_outputs(state)
@@ -64,9 +64,9 @@ def draw_inputs(state):
     window_width = state['x']
     win_inputs = curses.newwin(window_height, window_width, 3, 0)
     if state['tx']['mode'] == 'inputs':
-        win_inputs.addstr(0, 1, "inputs:                     (UP/DOWN: select, ENTER: view, V: verbose)", curses.A_BOLD + curses.color_pair(3))
+        win_inputs.addstr(0, 1, str("inputs:").ljust(20) + str("(UP/DOWN: select, ENTER: view)").rjust(53), curses.A_BOLD + curses.color_pair(3))
     else:
-        win_inputs.addstr(0, 1, "inputs:                                   (TAB: switch to, V: verbose)", curses.A_BOLD + curses.color_pair(5))
+        win_inputs.addstr(0, 1, str("inputs:").ljust(20) + str("(TAB: switch to)").rjust(53), curses.A_BOLD + curses.color_pair(5))
 
     # reset cursor if it's been resized off the bottom
     if state['tx']['cursor'] > state['tx']['offset'] + (window_height-2):
@@ -155,30 +155,20 @@ def draw_outputs(state):
 
 def draw_input_window(state, window, rpc_queue):
     color = curses.color_pair(1)
-    if 'testnet' in state:
-        if state['testnet']: color = curses.color_pair(2)
+    if g.testnet:
+        color = curses.color_pair(2)
 
-    window.clear()
-    window.addstr(0, 1, g.rpc_deamon + "-ncurses " + g.version + " [transaction input mode]", color + curses.A_BOLD)
-    window.addstr(1, 1, "please enter txid", curses.A_BOLD)
-    window.refresh()
-
-    entered_txid = getstr.getstr(67, 3, 1) # w, y, x
-
+    UI = UserInput(window, "transaction input mode")
+    UI.addline("please enter txid:", curses.A_BOLD)
+    entered_txid = UI.getstr(64)
+    
     if len(entered_txid) == 64: # TODO: better checking for valid txid here
         s = {'txid': entered_txid}
         rpc_queue.put(s)
-
-        window.addstr(5, 1, "waiting for transaction (will stall here if not found)", color + curses.A_BOLD)
-        window.refresh()
+        UI.addmessageline("waiting for transaction (will stall here if not found)", color + curses.A_BOLD, 0)
         state['mode'] = 'tx'
 
     else:
-        window.addstr(5, 1, "not a valid txid", color + curses.A_BOLD)
-        window.refresh()
-
-        time.sleep(0.5)
-
-        window.clear()
-        window.refresh()
+        UI.addmessageline("This is no valid txid", color + curses.A_BOLD)
+        UI.clear()
         state['mode'] = "monitor"

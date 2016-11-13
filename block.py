@@ -2,7 +2,7 @@
 import curses, time, calendar
 
 import global_mod as g
-import getstr
+from getstr import UserInput
 import footer
 
 def draw_window(state, window, rpc_queue=None):
@@ -71,16 +71,14 @@ def draw_transactions(state):
 
 def draw_input_window(state, window, rpc_queue):
     color = curses.color_pair(1)
-    if 'testnet' in state:
-        if state['testnet']: color = curses.color_pair(2)
+    if g.testnet:
+        color = curses.color_pair(2)
 
-    window.clear()
-    window.addstr(0, 1, g.rpc_deamon + "-ncurses " + g.version + " [block input mode]", color + curses.A_BOLD)
-    window.addstr(1, 1, "please enter block height or hash", curses.A_BOLD)
-    window.addstr(2, 1, "or timestamp (accepted formats: YYYY-MM-DD hh:mm:ss, YYYY-MM-DD)", curses.A_BOLD)
-    window.refresh()
-
-    entered_block = getstr.getstr(67, 4, 1) # w, y, x
+    UI = UserInput(window, "block input mode")
+    UI.addline("please enter block height or hash", curses.A_BOLD)
+    UI.addline("or timestamp (accepted formats: YYYY-MM-DD hh:mm:ss, YYYY-MM-DD):", curses.A_BOLD)
+    entered_block = UI.getstr(64)
+    
     entered_block_timestamp = 0
 
     try:
@@ -97,16 +95,14 @@ def draw_input_window(state, window, rpc_queue):
         s = {'findblockbytimestamp': entered_block_timestamp} 
         rpc_queue.put(s)
 
-        window.addstr(5, 1, "waiting for block (will stall here if not found)", color + curses.A_BOLD)
-        window.refresh()
+        UI.addmessageline("waiting for block (will stall here if not found)", color + curses.A_BOLD, 0)
         state['mode'] = "block"
 
     elif len(entered_block) == 64:
         s = {'getblock': entered_block}
         rpc_queue.put(s)
 
-        window.addstr(5, 1, "waiting for block (will stall here if not found)", color + curses.A_BOLD)
-        window.refresh()
+        UI.addmessageline("waiting for block (will stall here if not found)", color + curses.A_BOLD, 0)
         state['mode'] = "block"
 
     elif (len(entered_block) < 7) and entered_block.isdigit() and (int(entered_block) <= state['mininginfo']['blocks']):
@@ -118,17 +114,11 @@ def draw_input_window(state, window, rpc_queue):
             s = {'getblockhash': int(entered_block)}
             rpc_queue.put(s)
 
-            window.addstr(5, 1, "waiting for block (will stall here if not found)", color + curses.A_BOLD)
-            window.refresh()
+            UI.addmessageline("waiting for block (will stall here if not found)", color + curses.A_BOLD, 0)
             state['mode'] = "block"
             state['blocks']['browse_height'] = int(entered_block)
 
     else:
-        window.addstr(5, 1, "not a valid hash, height, or timestamp format", color + curses.A_BOLD)
-        window.refresh()
-
-        time.sleep(0.5)
-
-        window.clear()
-        window.refresh()
+        UI.addmessageline("This is not a valid hash, height, or timestamp format", color + curses.A_BOLD)
+        UI.clear()
         state['mode'] = "monitor"

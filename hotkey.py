@@ -61,10 +61,11 @@ def key_w(state, window, rpc_queue):
 
 def key_a(state, window, rpc_queue):
     if state['mode'] == 'wallet':
-        state['wallet']['mode'] = 'addresses'
-        s = {'listreceivedbyaddress': '0 true'}
-        rpc_queue.put(s)
-        wallet.draw_window(state, window, rpc_queue)
+        if 'wallet' in state:
+            state['wallet']['mode'] = 'addresses'
+            s = {'listreceivedbyaddress': '0 true'}
+            rpc_queue.put(s)
+            wallet.draw_window(state, window, rpc_queue)
 
 def key_p(state, window, rpc_queue):
     rpc_queue.put('getpeerinfo')

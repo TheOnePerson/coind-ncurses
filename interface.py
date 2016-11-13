@@ -8,7 +8,7 @@ import process
 import hotkey
 import splash
 
-def check_window_size(interface_queue, state, window, min_y, min_x):
+def check_window_size(interface_queue, state, window, min_y, min_x, max_y, max_x):
     # TODO: use SIGWINCH interrupt
     if (state['y'], state['x']) != window.getmaxyx():
         new_y, new_x = window.getmaxyx()
@@ -18,9 +18,14 @@ def check_window_size(interface_queue, state, window, min_y, min_x):
 
         if (state['y'], state['x']) != (-1, -1): # initialized
             interface_queue.put({'resize': 1})
+        
+        if new_y > max_y: new_y = max_y
+        if new_x > max_x: new_x = max_x
 
         state['x'] = new_x
         state['y'] = new_y
+        g.x = new_x
+        g.y = new_y
 
 def init_curses():
     window = curses.initscr()
@@ -56,7 +61,7 @@ def init_state():
 def loop(state, window, interface_queue, rpc_queue):
     iterations = 0
     while 1:
-        check_window_size(interface_queue, state, window, 12, 75) # min_y, min_x
+        check_window_size(interface_queue, state, window, 12, 79, 80, 100) # min_y, min_x, max_x, max_y
         error_message = process.queue(state, window, interface_queue, rpc_queue)
         if error_message:
             return error_message # ends if stop command sent by rpc

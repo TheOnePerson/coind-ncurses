@@ -215,13 +215,11 @@ def listreceivedbyaddress(s, state, window, rpc_queue):
             else:
                 amount_out = 0.0
                 amount = entry['amount']
-            if amount < 0:
-                amount = 0
-            if amount_out > amount_in:
-                amount_in = amount_out
             
             if amount > 0:
                 color = 1
+            elif amount < 0:
+                color = 3
             else:
                 color = 0
             output_string = entry['address'] + str("% 17.8f " % amount + unit).rjust(39)

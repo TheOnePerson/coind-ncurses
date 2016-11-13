@@ -13,22 +13,25 @@ def draw_window(state, window, rpc_queue=None):
     if 'chaintips' in state:
         win_header.addstr(0, 1, "chain tips: " + str(len(state['chaintips'])).ljust(10) + "                 (UP/DOWN: scroll, F: refresh)", curses.A_BOLD)
         win_header.addstr(1, 1, "key: Active/Invalid/HeadersOnly/ValidFork/ValidHeaders", curses.A_BOLD)
-        win_header.addstr(2, 1, "height length status 0-prefix hash", curses.A_BOLD + curses.color_pair(5))
+        win_header.addstr(2, 1, "height, length, status, 0-prefix hash", curses.A_BOLD + curses.color_pair(5))
         draw_tips(state)
 
     else:
-        win_header.addstr(0, 1, "no chain tip information loaded", curses.A_BOLD + curses.color_pair(3))
-        win_header.addstr(1, 1, "press 'F' to refresh", curses.A_BOLD)
-        if g.coin_unit == 'BTC':
-            win_header.addstr(2, 1, "(note that bitcoind 0.9.3 and older do not support this feature)", curses.A_BOLD)
+        if rpc_queue.qsize() > 0:
+            win_header.addstr(0, 1, "...waiting for chain tip information being processed...", curses.A_BOLD + curses.color_pair(3))
+        else:
+            win_header.addstr(0, 1, "no chain tip information loaded", curses.A_BOLD + curses.color_pair(3))
+            win_header.addstr(1, 1, "press 'F' to refresh", curses.A_BOLD)
+            if g.coin_unit == 'BTC':
+                win_header.addstr(2, 1, "(note that bitcoind 0.9.3 and older do not support this feature)", curses.A_BOLD)
 
     win_header.refresh()
     footer.draw_window(state, rpc_queue)
 
 def draw_tips(state):
     window_height = state['y'] - 4
-    win_tips = curses.newwin(window_height, 75, 3, 0)
-
+    win_tips = curses.newwin(window_height, state['x'] if state['x'] > 73 else 73, 3, 0)
+    
     offset = state['chaintips_offset']
 
     for index in xrange(offset, offset+window_height):
@@ -46,7 +49,7 @@ def draw_tips(state):
                 if 'height' in tip:
                     win_tips.addstr(index-offset, 1, str(tip['height']))
                 if 'branchlen' in tip:
-                    win_tips.addstr(index-offset, 8, str(tip['branchlen']))
+                    win_tips.addstr(index-offset, 9, str(tip['branchlen']))
                 if 'status' in tip:
                     if tip['status'] == 'invalid': string = 'xx'
                     elif tip['status'] == 'headers-onlyinvalid': string = 'HO'
@@ -54,12 +57,12 @@ def draw_tips(state):
                     elif tip['status'] == 'valid-fork': string = 'VF'
                     elif tip['status'] == 'active': string = 'A'
                     else: string = '?'
-                    win_tips.addstr(index-offset, 11, string)
+                    win_tips.addstr(index-offset, 12, string)
                 if 'hash' in tip:
                     i = 0
                     while i < len(tip['hash']): # off by one but doesn't really matter
                         if tip['hash'][i] == '0': i += 1
                         else: break
-                    win_tips.addstr(index-offset, 14, str(i) + ' ...' + tip['hash'][i:])
+                    win_tips.addstr(index-offset, 15, str(i) + ' ...' + tip['hash'][i:])
 
     win_tips.refresh()

@@ -4,7 +4,7 @@ import curses
 import global_mod as g
 
 def draw_window(state, rpc_queue=None):
-    win_footer = curses.newwin(1, 76, state['y']-1, 0)
+    win_footer = curses.newwin(1, g.x, g.y - 1, 0)
 
     color = curses.color_pair(1)
     if 'testnet' in state:
@@ -23,6 +23,7 @@ def draw_window(state, rpc_queue=None):
     if rpc_queue is not None:
         if rpc_queue.qsize() > 0:
             working_indicator = 'wrk... (' + str(rpc_queue.qsize()) + ')'
-            win_footer.addstr(0, 76 - 1 - len(working_indicator), working_indicator, curses.A_BOLD + curses.color_pair(3))
+            g.addstr_rjust(win_footer, 0, working_indicator, curses.A_BOLD + curses.color_pair(3), 1)
+            # win_footer.addstr(0, 76 - 1 - len(working_indicator), working_indicator, curses.A_BOLD + curses.color_pair(3))
 
     win_footer.refresh()

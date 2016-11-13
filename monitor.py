@@ -8,7 +8,7 @@ def draw_window(state, old_window, rpc_queue):
     # TODO: only draw parts that actually changed
     old_window.clear()
     old_window.refresh()
-    window = curses.newwin(19, 76, 0, 0)
+    window = curses.newwin(g.y - 1, g.x, 0, 0)
 
     if 'version' in state:
         if state['testnet'] == 1:
@@ -26,15 +26,15 @@ def draw_window(state, old_window, rpc_queue):
             color = 0
         else:
             color = curses.color_pair(3)
-        window.addstr(0, 32, str(state['peers']) + " peers    ", color + curses.A_BOLD)
-
+        g.addstr_ljust(window, 0, str(state['peers']) + " peers", color + curses.A_BOLD, 0, 10, 4)
+        
     if 'balance' in state:
         balance_string = "%0.8f" % state['balance'] + " " + unit
         if 'unconfirmedbalance' in state:
             if state['unconfirmedbalance'] != 0:
                 balance_string += " (+" + "%0.8f" % state['unconfirmedbalance'] + " unconf)"
-        window.addstr(1, 32, balance_string, curses.A_BOLD)
-
+        g.addstr_ljust(window, 1, balance_string, curses.A_BOLD, 0, 10, 4)
+        
     if 'mininginfo' in state:
         height = str(state['mininginfo']['blocks'])
         if height in state['blocks']:
@@ -72,8 +72,8 @@ def draw_window(state, old_window, rpc_queue):
                         window.addstr(8, 1, "Fees: " + total_fees_str + " (avg " +  fees_per_tx + ", ~" + fees_per_kb + ")")
 
 
-            window.addstr(4, 38, "Block timestamp: " + time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(blockdata['time'])))
-
+            g.addstr_rjust(window, 4, "Block timestamp: " + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(blockdata['time'])), curses.A_NORMAL, 1)
+            
             if state['lastblocktime'] == 0:
                 recvdelta_string = "        "
             else:
@@ -93,11 +93,15 @@ def draw_window(state, old_window, rpc_queue):
             else:
                 stampdelta_string = "     (stamp in future)"
 
-            window.addstr(5, 38, "Age: " + recvdelta_string + " " + stampdelta_string)
+            g.addstr_rjust(window, 5, "Age: " + recvdelta_string + " " + stampdelta_string, curses.A_NORMAL, 1)
+            # window.addstr(5, 38, "Age: " + recvdelta_string + " " + stampdelta_string)
 
             if 'chainwork' in blockdata:
                 log2_chainwork = math.log(int(blockdata['chainwork'], 16), 2)
-                window.addstr(14, 1, "Chain work: 2**" + "%0.6f" % log2_chainwork)
+                try:
+                    window.addstr(14, 1, "Chain work: 2**" + "%0.6f" % log2_chainwork)
+                except:
+                    print(log2_chainwork)
 
         diff = int(state['mininginfo']['difficulty'])
         window.addstr(10, 1, "Diff:        " + "{:,d}".format(diff))
@@ -119,7 +123,10 @@ def draw_window(state, old_window, rpc_queue):
             nextdiff = (rate*600)/(2**32)
             if state['testnet'] == 1:
                 nextdiff *= 2 # testnet has 1200 est. block interval, not 600
-            window.addstr(index, 1, "Est (" + str(block_avg).rjust(4) + "): ~" + "{:,d}".format(nextdiff))
+            try:
+                window.addstr(index, 1, "Est (" + str(block_avg).rjust(4) + "): ~" + "{:,d}".format(int(nextdiff)))
+            except:
+                window.addstr(index, 1, "Est (" + str(block_avg).rjust(4) + "): ~" + "{:,d}".format(int(nextdiff)))
 
         if rate > 10**18:
             rate /= 10**18
@@ -130,26 +137,33 @@ def draw_window(state, old_window, rpc_queue):
         else:
             rate /= 10**6
             suffix = " MH/s"
-        rate_string = "{:,d}".format(rate) + suffix
-        window.addstr(index, 38, "Hashrate (" + str(block_avg).rjust(4) + "): " + rate_string.rjust(13))
+        try:
+            rate_string = "{:9.4f}".format(float(rate)) + suffix
+            g.addstr_rjust(window, index, "Hashrate (" + str(block_avg).rjust(4) + "): " + rate_string.rjust(13), curses.A_NORMAL, 1)
+        except:
+            g.addstr_rjust(window, index, "Hashrate (" + str(block_avg).rjust(4) + "): ?????????????", curses.A_NORMAL, 1)
+        # window.addstr(index, 38, "Hashrate (" + str(block_avg).rjust(4) + "): " + rate_string.rjust(13))
         index += 1
 
         pooledtx = state['mininginfo']['pooledtx']
-        window.addstr(14, 38, "Mempool transactions: " + "% 5d" % pooledtx)
+        g.addstr_rjust(window, 14, "Mempool transactions: " + "% 5d" % pooledtx, curses.A_NORMAL, 1)
+        # window.addstr(14, 38, "Mempool transactions: " + "% 5d" % pooledtx)
 
     if 'totalbytesrecv' in state:
         recvmb = "%.2f" % (state['totalbytesrecv']*1.0/1048576)
         sentmb = "%.2f" % (state['totalbytessent']*1.0/1048576)
         recvsent_string = "D/U: " + recvmb + " / " + sentmb + " MB"
-        window.addstr(0, 43, recvsent_string.rjust(30), curses.A_BOLD)
+        g.addstr_rjust(window, 0, recvsent_string, curses.A_BOLD, 1)
+        # window.addstr(0, 43, recvsent_string.rjust(30), curses.A_BOLD)
 
     if 'estimatefee' in state:
         string = "estimatefee:"
         for item in state['estimatefee']:
             if item['value'] > 0:
-                string += " (" + str(item['blocks']) + ")" + "%4.2f" % (item['value']*1000) + "m" + unit
+                string += " (" + str(item['blocks']) + ")" + "%4.2f" % (item['value']*1000) + " m" + unit
         if len(string) > 12:
-            window.addstr(15, 38, string)
+            g.addstr_rjust(window, 15, string, curses.A_NORMAL, 1)
+            # window.addstr(15, 38, string)
 
     if 'mininginfo' in state:
         errors = state['mininginfo']['errors']

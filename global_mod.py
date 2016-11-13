@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from curses import A_NORMAL
+
 version = "v0.0.24"
 modes = ['monitor', 'wallet', 'peers', 'block', 'tx', 'console', 'net', 'forks', 'quit']
 
@@ -19,6 +21,9 @@ node_port_test = None
 reward_base = None		# initial reward for mining a block
 halving_blockamount = None	# number ob blocks after which the reward is being halved
 blocks_per_day = None
+testnet = None
+x = None
+y = None
 
 def get_default_coinmode():
 	return 'BTC'
@@ -65,3 +70,61 @@ def init_coinmode():
 		reward_base = 50		# initial reward for mining a block
 		halving_blockamount = 210000	# number ob blocks after which the reward is being halved
 		blocks_per_day = 144
+
+def addstr_rjust(window, y, string, attribs=A_NORMAL, padding=0, num_cols=1, col=0):
+	""" prints out a right-aligned string on the given curses window.
+	Max x position is taken from module's global variable.
+	padding = number of spaces as a right margin. Default 0.
+	num_cols = window can be split into virtual columns. Default 1.
+	col = virtual column where the string is printed. Default 0 (=first column).
+	"""
+	global x
+	(max_y, max_x) = window.getmaxyx()
+	if max_x > x: max_x = x
+	if num_cols > 1:
+		max_x = int(max_x / num_cols) * (col + 1)
+	if len(string) <= max_x:
+		if padding + len(string) <= max_x:
+			try:
+				window.addstr(y, max_x - len(string) - padding, string, attribs)
+			except:
+				print("Error! y=" + str(y) + ", max_x=" + str(max_x) + ", len(string)=" + str(len(string)) + ", padding=" + str(padding))
+		else:
+			window.addstr(y, max_x - len(string), string, attribs)
+
+def addstr_ljust(window, y, string, attribs=A_NORMAL, padding=0, num_cols=1, col=0):
+	""" prints out a left-aligned string on the given curses window.
+	padding = number of spaces as a left margin. Default 0.
+	num_cols = window can be split into virtual columns. Default 1.
+	col = virtual column where the string is printed. Default 0 (=first column).
+	"""
+	global x
+	if num_cols > 1:
+		(max_y, max_x) = window.getmaxyx()
+		if max_x > x: max_x = x
+		print_x = int(max_x / num_cols) * col
+	else:
+		print_x = 0
+	window.addstr(y, print_x + padding, string, attribs)
+
+def addstr_cjust(window, y, string, attribs=A_NORMAL, padding=0, num_cols=1, col=0):
+	""" prints out a centered string on the given curses window.
+	Max x position is taken from module's global variable.
+	padding = number of spaces as an additional right margin. Default 0.
+	num_cols = window can be split into virtual columns. Default 1.
+	col = virtual column where the string is printed. Default 0 (=first column).
+	"""
+	global x
+	(max_y, max_x) = window.getmaxyx()
+	if max_x > x: max_x = x
+	min_x = 0
+	if num_cols > 1:
+		max_x = int(max_x / num_cols) * (col + 1)
+		min_x = int(max_x / num_cols) * col
+	l = len(string)
+	print_x = int((max_x - padding - min_x - l) / 2) + min_x
+	if print_x < 0: print_x = 0
+	if l <= max_x + print_x:
+		window.addstr(y, print_x, string, attribs)
+
+
