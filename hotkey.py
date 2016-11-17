@@ -57,6 +57,7 @@ def key_right(state, window, rpc_queue):
 
 def key_w(state, window, rpc_queue):
     rpc_queue.put('listsinceblock')
+    rpc_queue.put('getwalletinfo')
     change_mode(state, window, 'wallet', rpc_queue)
 
 def key_a(state, window, rpc_queue):
@@ -64,6 +65,7 @@ def key_a(state, window, rpc_queue):
         if 'wallet' in state:
             state['wallet']['mode'] = 'addresses'
             s = {'listreceivedbyaddress': '0 true'}
+            rpc_queue.put('getwalletinfo')
             rpc_queue.put(s)
             wallet.draw_window(state, window, rpc_queue)
 
@@ -84,6 +86,12 @@ def key_g(state, window, rpc_queue):
         block.draw_input_window(state, window, rpc_queue)
     elif state['mode'] == "console":
         console.draw_input_box(state, rpc_queue)
+
+def key_x(state, window, rpc_queue):
+    if state['mode'] == 'wallet':
+        if 'wallet' in state:
+            state['wallet']['mode'] = 'settxfee'
+            wallet.draw_window(state, window, rpc_queue)
 
 def go_to_latest_block(state, window, rpc_queue):
     if state['mode'] == "block":
@@ -360,6 +368,9 @@ keymap = {
 
     ord('a'): key_a,
     ord('A'): key_a,
+
+    ord('x'): key_x,
+    ord('X'): key_x,
 
     ord('p'): key_p,
     ord('P'): key_p,

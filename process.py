@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import Queue, textwrap, time
+from unidecode import unidecode
 
 import global_mod as g
 import tx
@@ -58,7 +59,8 @@ def getblock(s, state, window, rpc_queue=None):
     state['blocks'][str(height)] = s['getblock']
 
     if state['mode'] == "monitor":
-        monitor.draw_window(state, window, rpc_queue)
+        #monitor.draw_window(state, window, rpc_queue)
+        pass
     if state['mode'] == "block":
         if 'queried' in s['getblock']:
             state['blocks'][str(height)].pop('queried')
@@ -78,7 +80,8 @@ def getnetworkhashps(s, state, window, rpc_queue):
 
     if state['mode'] == "splash" and blocks == 2016: # initialization complete
         state['mode'] = "monitor"
-        monitor.draw_window(state, window, rpc_queue)
+        #monitor.draw_window(state, window, rpc_queue)
+        pass
 
 def getnettotals(s, state, window, rpc_queue):
     state['totalbytesrecv'] = s['getnettotals']['totalbytesrecv']
@@ -112,6 +115,11 @@ def getchaintips(s, state, window, rpc_queue):
     state['chaintips_offset'] = 0
     if state['mode'] == 'forks':
         forks.draw_window(state, window, rpc_queue)
+
+def getwalletinfo(s, state, window, rpc_queue):
+    state['walletinfo'] = s['getwalletinfo']
+    if state['mode'] == "wallet":
+        wallet.draw_window(state, window, rpc_queue)
 
 def listsinceblock(s, state, window, rpc_queue):
     state['wallet'] = s['listsinceblock']
@@ -232,7 +240,7 @@ def listreceivedbyaddress(s, state, window, rpc_queue):
             state['wallet']['addresses_view_string'].append(output_string)
             state['wallet']['addresses_view_colorpair'].append(0)
 
-            output_string = " " + entry['account'].ljust(36) 
+            output_string = " " + unidecode(entry['account'].ljust(36))
             state['wallet']['addresses_view_string'].append(output_string)
             state['wallet']['addresses_view_colorpair'].append(0)
 
@@ -332,6 +340,7 @@ def queue(state, window, interface_queue, rpc_queue=None):
         elif 'getnettotals' in s: getnettotals(s, state, window, rpc_queue)
         elif 'getmininginfo' in s: getmininginfo(s, state, window)
         elif 'getpeerinfo' in s: getpeerinfo(s, state, window, rpc_queue)
+        elif 'getwalletinfo' in s: getwalletinfo(s, state, window, rpc_queue)
         elif 'getchaintips' in s: getchaintips(s, state, window, rpc_queue)
         elif 'listsinceblock' in s: listsinceblock(s, state, window, rpc_queue)
         elif 'listreceivedbyaddress' in s: listreceivedbyaddress(s, state, window, rpc_queue)

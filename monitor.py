@@ -3,12 +3,19 @@ import curses, time, math
 
 import global_mod as g
 import footer
+import os
 
-def draw_window(state, old_window, rpc_queue):
-    # TODO: only draw parts that actually changed
-    old_window.clear()
-    old_window.refresh()
+def draw_window(state, old_window, rpc_queue, do_clear = True):
+
     window = curses.newwin(g.y - 1, g.x, 0, 0)
+
+    if do_clear:
+        old_window.clear()
+        old_window.refresh()
+
+    # display load average
+    load_avg = os.getloadavg()
+    g.addstr_rjust(window, 1, "Load avg: " + "{:.2f}".format(load_avg[0]) + " / " + "{:.2f}".format(load_avg[1]) + " / " + "{:.2f}".format(load_avg[2]), curses.A_BOLD, 1)
 
     if 'version' in state:
         if state['testnet'] == 1:
@@ -44,11 +51,11 @@ def draw_window(state, old_window, rpc_queue):
                 window.attrset(curses.A_REVERSE + curses.color_pair(5) + curses.A_BOLD)
                 blockdata.pop('new')
 
-            window.addstr(3, 1, height.zfill(7) + ": " + str(blockdata['hash']))
-            window.addstr(4, 1, str(blockdata['size']) + " bytes (" + str(blockdata['size']/1024) + " KB)       ")
+            window.addstr(3, 1, "{:7d}".format(int(height)) + ": " + str(blockdata['hash']))
+            window.addstr(4, 1, "{:,d}".format(int(blockdata['size'])) + " bytes (" + "{:,.2f}".format(float(blockdata['size']/1024)) + " KB)       ")
             tx_count = len(blockdata['tx'])
             bytes_per_tx = blockdata['size'] / tx_count
-            window.addstr(5, 1, "Transactions: " + str(tx_count) + " (" + str(bytes_per_tx) + " bytes/tx)")
+            window.addstr(5, 1, "Transactions: " + "{:,d}".format(int(tx_count)) + " (" + "{:,d}".format(int(bytes_per_tx)) + " bytes/tx)")
 
             if 'coinbase_amount' in blockdata:
                 block_subsidy = float(g.reward_base / (2 ** (state['mininginfo']['blocks'] // g.halving_blockamount)))
@@ -146,12 +153,12 @@ def draw_window(state, old_window, rpc_queue):
         index += 1
 
         pooledtx = state['mininginfo']['pooledtx']
-        g.addstr_rjust(window, 14, "Mempool transactions: " + "% 5d" % pooledtx, curses.A_NORMAL, 1)
+        g.addstr_rjust(window, 14, "Mempool transactions: " + "{:5,d}".format(int(pooledtx)), curses.A_NORMAL, 1)
         # window.addstr(14, 38, "Mempool transactions: " + "% 5d" % pooledtx)
 
     if 'totalbytesrecv' in state:
-        recvmb = "%.2f" % (state['totalbytesrecv']*1.0/1048576)
-        sentmb = "%.2f" % (state['totalbytessent']*1.0/1048576)
+        recvmb = "{:,.2f}".format(float(state['totalbytesrecv']*1.0/1048576))
+        sentmb = "{:,.2f}".format(float(state['totalbytessent']*1.0/1048576))
         recvsent_string = "D/U: " + recvmb + " / " + sentmb + " MB"
         g.addstr_rjust(window, 0, recvsent_string, curses.A_BOLD, 1)
         # window.addstr(0, 43, recvsent_string.rjust(30), curses.A_BOLD)

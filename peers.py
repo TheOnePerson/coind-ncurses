@@ -4,9 +4,11 @@ import curses, time
 import global_mod as g
 import footer
 
-def draw_window(state, window, rpc_queue=None):
-    window.clear()
-    window.refresh()
+def draw_window(state, window, rpc_queue = None, do_clear = True):
+
+    if do_clear:
+        window.clear()
+        window.refresh()
 
     win_header = curses.newwin(3, 75, 0, 0)
 
@@ -78,7 +80,8 @@ def draw_peers(state):
 
                 win_peers.addstr(index-offset, 55, time_string.rjust(12))
 
-                if 'syncheight' in peer:
-                    win_peers.addstr(index-offset, 69, str(peer['syncheight']).rjust(6))
+                #if 'syncheight' in peer:
+                if 'synced_headers' in peer:
+                    win_peers.addstr(index-offset, 67, str(peer['synced_headers']).rjust(8))
 
     win_peers.refresh()

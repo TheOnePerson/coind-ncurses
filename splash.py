@@ -8,7 +8,7 @@ def get_splash_array():
         splash_array = [
             "  BB            BB                                   BB",
             "  BB       BB   BB    BBBB   BBBBB   BB  BB BB       BB",
-            "  BBBBB        BBBB  BB     BB   BB      BBB BB   BBBBB",
+            "  BBBBBB       BBBB  BB     BB   BB      BBB BB   BBBBB",
             "  BB   BB  BB   BB   BB     BB   BB  BB  BB  BB  BB  BB",
             "  BBB  BB  BB   BB   BB     BB   BB  BB  BB  BB  BB  BB",
             "  BB BBB   BB    BB   BBBB   BBBBB   BB  BB  BB   BBBBB",

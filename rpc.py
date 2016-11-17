@@ -68,7 +68,7 @@ def rpcrequest(rpchandle, request, interface_queue, *args):
         if interface_queue:
             interface_queue.put({request: response})
 
-	return response
+        return response
     except:
         log('debug.log', 2, request + ' failed')
         return False
@@ -161,6 +161,9 @@ def loop(interface_queue, rpc_queue, cfg):
         elif 'getblock' in s:
             getblock(rpchandle, interface_queue, s['getblock'], True)
 
+        elif 'settxfee' in s:
+            response = rpcrequest(rpchandle, 'settxfee', False, s['settxfee'])
+            
         elif 'txid' in s:
             try:
                 tx = rpcrequest(rpchandle, 'getrawtransaction', False, s['txid'], 1)
@@ -211,6 +214,9 @@ def loop(interface_queue, rpc_queue, cfg):
 
         elif 'getpeerinfo' in s:
             rpcrequest(rpchandle, 'getpeerinfo', interface_queue)
+
+        elif 'getwalletinfo' in s:
+            rpcrequest(rpchandle, 'getwalletinfo', interface_queue)
 
         elif 'listsinceblock' in s:
             rpcrequest(rpchandle, 'listsinceblock', interface_queue)

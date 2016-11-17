@@ -16,11 +16,11 @@ def check_window_size(interface_queue, state, window, min_y, min_x, max_y, max_x
         if (new_y < min_y) or (new_x < min_x):
             interface_queue.put({ 'stop': "Window is too small - must be at least " + str(min_x) + "x" + str(min_y)})
 
-        if (state['y'], state['x']) != (-1, -1): # initialized
-            interface_queue.put({'resize': 1})
-        
         if new_y > max_y: new_y = max_y
         if new_x > max_x: new_x = max_x
+
+        if (state['y'], state['x']) != (new_y, new_x): # initialized
+            interface_queue.put({'resize': 1})
 
         state['x'] = new_x
         state['y'] = new_y
@@ -60,15 +60,17 @@ def init_state():
 
 def loop(state, window, interface_queue, rpc_queue):
     iterations = 0
+    tick = 25
     while 1:
-        check_window_size(interface_queue, state, window, 12, 79, 80, 100) # min_y, min_x, max_x, max_y
+        check_window_size(interface_queue, state, window, 12, 79, 80, 120) # min_y, min_x, max_x, max_y
         error_message = process.queue(state, window, interface_queue, rpc_queue)
         if error_message:
             return error_message # ends if stop command sent by rpc
 
-        if state['mode'] == "monitor":
-            if not iterations % 20:
-                monitor.draw_window(state, window, rpc_queue)
+        if not iterations % tick:
+            iterations = 0
+            if state['mode'] == "monitor":
+                monitor.draw_window(state, window, rpc_queue, False)
 
         if hotkey.check(state, window, rpc_queue): # poll for user input
             break # returns 1 when quit key is pressed
