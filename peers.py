@@ -26,7 +26,7 @@ def draw_window(state, window, rpc_queue = None, do_clear = True):
 
 def draw_peers(state):
     window_height = state['y'] - 4
-    win_peers = curses.newwin(window_height, 75, 3, 0)
+    win_peers = curses.newwin(window_height, 76, 3, 0)
 
     offset = state['peerinfo_offset']
 
@@ -34,7 +34,7 @@ def draw_peers(state):
         if index < len(state['peerinfo']):
             peer = state['peerinfo'][index]
 
-            condition = (index == offset+window_height-1) and (index+1 < len(state['peerinfo']))
+            condition = (index == offset + window_height - 1) and (index + 1 < len(state['peerinfo']))
             condition = condition or ( (index == offset) and (index > 0) )
 
             if condition:
@@ -80,8 +80,11 @@ def draw_peers(state):
 
                 win_peers.addstr(index-offset, 55, time_string.rjust(12))
 
-                #if 'syncheight' in peer:
                 if 'synced_headers' in peer:
-                    win_peers.addstr(index-offset, 67, str(peer['synced_headers']).rjust(8))
+                    try:
+                        win_peers.addstr(index-offset, 67, str(peer['synced_headers']).rjust(8))
+                    except:
+                        (this_y, this_x) = win_peers.getmaxyx()
+                        raise SystemExit(str(this_y) + "|" + str(this_x) + "|" + str(index) + "|" + str(offset) + "|" + str(peer['synced_headers']))
 
     win_peers.refresh()

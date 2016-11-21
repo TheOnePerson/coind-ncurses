@@ -24,6 +24,7 @@ blocks_per_day = None
 testnet = None
 x = None
 y = None
+viewport_heigth = None
 
 def get_default_coinmode():
 	return 'BTC'
@@ -88,7 +89,8 @@ def addstr_rjust(window, y, string, attribs=A_NORMAL, padding=0, num_cols=1, col
 			try:
 				window.addstr(y, max_x - len(string) - padding, string, attribs)
 			except:
-				print("Error! y=" + str(y) + ", max_x=" + str(max_x) + ", len(string)=" + str(len(string)) + ", padding=" + str(padding))
+				#print("Error! y=" + str(y) + ", max_x=" + str(max_x) + ", len(string)=" + str(len(string)) + ", padding=" + str(padding))
+				pass
 		else:
 			window.addstr(y, max_x - len(string), string, attribs)
 

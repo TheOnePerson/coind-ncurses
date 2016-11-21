@@ -121,6 +121,19 @@ def getwalletinfo(s, state, window, rpc_queue):
     if state['mode'] == "wallet":
         wallet.draw_window(state, window, rpc_queue)
 
+def settxfee(s, state, window, rpc_queue):
+    window.addstr(0,10,"DEBUG! settxfee process")   #DEBUG!
+    state['wallet']['mode'] = 'tx'
+    rpc_queue.put('getwalletinfo')
+    wallet.draw_window(state, window, rpc_queue)
+
+def getnewaddress(s, state, window, rpc_queue):
+    if state['mode'] == "wallet":
+        if 'wallet' in state:
+            state['wallet']['newaddress'] = str(s['getnewaddress'])
+            state['wallet']['mode'] = 'newaddress'
+        wallet.draw_window(state, window, rpc_queue)
+
 def listsinceblock(s, state, window, rpc_queue):
     state['wallet'] = s['listsinceblock']
     state['wallet']['cursor'] = 0
@@ -341,6 +354,8 @@ def queue(state, window, interface_queue, rpc_queue=None):
         elif 'getmininginfo' in s: getmininginfo(s, state, window)
         elif 'getpeerinfo' in s: getpeerinfo(s, state, window, rpc_queue)
         elif 'getwalletinfo' in s: getwalletinfo(s, state, window, rpc_queue)
+        elif 'settxfee' in s: settxfee(s, state, window, rpc_queue)
+        elif 'getnewaddress' in s: getnewaddress(s, state, window, rpc_queue)
         elif 'getchaintips' in s: getchaintips(s, state, window, rpc_queue)
         elif 'listsinceblock' in s: listsinceblock(s, state, window, rpc_queue)
         elif 'listreceivedbyaddress' in s: listreceivedbyaddress(s, state, window, rpc_queue)

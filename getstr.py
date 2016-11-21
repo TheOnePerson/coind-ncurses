@@ -86,13 +86,13 @@ class UserInput(object):
     def nextline(self):
         self._y += 1
         
-    def addline(self, string, attribs=None, y=-1, x=1):
+    def addline(self, string = "", attribs = None, y = -1, x = 1):
         y_here = self._y if y == -1 else y
         self._window.addstr(y_here, x, string, curses.A_BOLD if attribs == None else attribs)
         self._window.refresh()
         self._y = y_here + 1
     
-    def getstr(self, maxwidth=-1, y=-1, x=1):
+    def getstr(self, maxwidth = -1, y = -1, x = 1):
         (win_x, win_y) = self._window.getmaxyx()
         width = win_x-3 if maxwidth == -1 else maxwidth+3
         win_y = self._y if y == -1 else y
@@ -100,6 +100,14 @@ class UserInput(object):
         self.nextline()
         return result
     
+    def getpasswdstr(self, maxwidth = -1, y = -1, x = 1):
+        (win_x, win_y) = self._window.getmaxyx()
+        width = win_x-3 if maxwidth == -1 else maxwidth + 3
+        win_y = self._y if y == -1 else y
+        result = sys.modules["getstr"].getstr(width, win_y, x, "*")
+        self.nextline()
+        return result
+
     def continue_yesno(self, defaultyes=True, message=""):
         self.addline(("OK, do you want to continue? " if message == "" else message) + ("[Y/n]" if defaultyes else "[y/N]"), curses.color_pair(5) + curses.A_BOLD)
         result = self.getstr(3)
@@ -110,6 +118,11 @@ class UserInput(object):
                 return False
         else:
             return True if defaultyes else False
+    
+    def continue_enter(self, message=""):
+        self.addline(("Please press ENTER to continue..." if message == "" else message), curses.color_pair(5) + curses.A_BOLD)
+        result = self.getstr(1)
+        return True
     
     def addmessageline(self, string, attribs=None, timetowait=-1, y=-1, x=1):
         y_here = self._y + 1 if y == -1 else y

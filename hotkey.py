@@ -87,10 +87,22 @@ def key_g(state, window, rpc_queue):
     elif state['mode'] == "console":
         console.draw_input_box(state, rpc_queue)
 
+def key_r(state, window, rpc_queue):
+    if state['mode'] == 'wallet':
+        if 'wallet' in state:
+            state['wallet']['mode'] = 'newaddress'
+            wallet.draw_window(state, window, rpc_queue)
+
 def key_x(state, window, rpc_queue):
     if state['mode'] == 'wallet':
         if 'wallet' in state:
             state['wallet']['mode'] = 'settxfee'
+            wallet.draw_window(state, window, rpc_queue)
+
+def key_s(state, window, rpc_queue):
+    if state['mode'] == 'wallet':
+        if 'wallet' in state:
+            state['wallet']['mode'] = 'sendtoaddress'
             wallet.draw_window(state, window, rpc_queue)
 
 def go_to_latest_block(state, window, rpc_queue):
@@ -126,8 +138,8 @@ def scroll_down(state, window, rpc_queue):
                 blockdata = state['blocks'][height]
                 if state['blocks']['cursor'] < (len(blockdata['tx']) - 1):
                     state['blocks']['cursor'] += 1
-                    window_height = state['y'] - 6
-                    if (state['blocks']['cursor'] - state['blocks']['offset']) > window_height-2:
+                    window_height = g.viewport_height
+                    if (state['blocks']['cursor'] - state['blocks']['offset']) > window_height - 2:
                         state['blocks']['offset'] += 1
                     block.draw_transactions(state)
 
@@ -147,17 +159,17 @@ def scroll_down(state, window, rpc_queue):
 
     elif state['mode'] == "wallet":
         if 'wallet' in state:
-            window_height = state['y'] - 3
+            window_height = g.viewport_heigth
             if state['wallet']['mode'] == 'tx':
                 if 'transactions' in state['wallet']:
                     if state['wallet']['cursor'] < (len(state['wallet']['transactions']) - 1):
                         state['wallet']['cursor'] += 1
-                        if ( (state['wallet']['cursor']*4 +1 ) - state['wallet']['offset']) > window_height-2:
+                        if ( (state['wallet']['cursor'] * 4 + 1 ) - state['wallet']['offset']) > window_height - 2:
                             state['wallet']['offset'] += 4
                         wallet.draw_transactions(state)
             else:
                 if 'addresses' in state['wallet']:
-                    if len(state['wallet']['addresses'])*4 - state['wallet']['offset'] > window_height-1:
+                    if len(state['wallet']['addresses']) * 4 - state['wallet']['offset'] > window_height - 1:
                         state['wallet']['offset'] += 1
                         wallet.draw_addresses(state)
 
@@ -222,6 +234,20 @@ def scroll_up_page(state, window, rpc_queue):
         state['console']['offset'] += window_height
         console.draw_buffer(state)
 
+    elif state['mode'] == "block":
+        if 'blocks' in state:
+            window_height = state['y'] - 7
+            if state['blocks']['cursor'] >= window_height - 2:
+                if state['blocks']['offset'] >= window_height - 2:
+                    state['blocks']['offset'] -= window_height - 2
+                else:
+                    state['blocks']['offset'] = 0
+                state['blocks']['cursor'] -= window_height - 2
+            else:
+                state['blocks']['cursor'] = 0
+                state['blocks']['offset'] = 0
+            block.draw_transactions(state)
+
 def scroll_down_page(state, window, rpc_queue):
     if state['mode'] == "console":
         window_height = state['y'] - 3 - 2
@@ -230,6 +256,18 @@ def scroll_down_page(state, window, rpc_queue):
         else:
             state['console']['offset'] = 0
         console.draw_buffer(state)
+
+    elif state['mode'] == "block":
+        if 'blocks' in state:
+            height = str(state['blocks']['browse_height'])
+            if height in state['blocks']:
+                blockdata = state['blocks'][height]
+                window_height = g.viewport_height
+                if state['blocks']['cursor'] < (len(blockdata['tx']) - window_height - 3):
+                    state['blocks']['cursor'] += window_height - 3
+                    if (state['blocks']['offset'] < (len(blockdata['tx']) - window_height - 3)):
+                        state['blocks']['offset'] += window_height - 3
+                block.draw_transactions(state)
 
 def toggle_submode(state, window, rpc_queue):
     if state['mode'] == 'tx':
@@ -374,6 +412,12 @@ keymap = {
 
     ord('p'): key_p,
     ord('P'): key_p,
+
+    ord('r'): key_r,
+    ord('R'): key_r,
+
+    ord('s'): key_s,
+    ord('S'): key_s,
 
     ord('g'): key_g,
     ord('G'): key_g,

@@ -163,6 +163,7 @@ def loop(interface_queue, rpc_queue, cfg):
 
         elif 'settxfee' in s:
             response = rpcrequest(rpchandle, 'settxfee', False, s['settxfee'])
+            interface_queue.put({'settxfee': response})
             
         elif 'txid' in s:
             try:
@@ -215,6 +216,9 @@ def loop(interface_queue, rpc_queue, cfg):
         elif 'getpeerinfo' in s:
             rpcrequest(rpchandle, 'getpeerinfo', interface_queue)
 
+        elif 'getnewaddress' in s:
+            rpcrequest(rpchandle, 'getnewaddress', interface_queue, s['getnewaddress'])
+            
         elif 'getwalletinfo' in s:
             rpcrequest(rpchandle, 'getwalletinfo', interface_queue)
 
