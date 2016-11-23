@@ -95,6 +95,15 @@ def getblock(rpchandle, interface_queue, block_to_get, queried = False, new = Fa
     except:
         return 0
 
+def sendtoaddress(rpchandle, interface_queue, s):
+    try:
+        txid = rpcrequest(rpchandle, 'sendtoaddress', interface_queue, s['address'], s['amount'], s['comment'], s['comment_to'])
+        interface_queue.put({'sendtoaddress': txid})
+        return txid
+
+    except:
+        return 0
+
 def loop(interface_queue, rpc_queue, cfg):
     # TODO: add error checking for broken config, improve exceptions
     rpchandle = init(interface_queue, cfg)
@@ -162,9 +171,11 @@ def loop(interface_queue, rpc_queue, cfg):
             getblock(rpchandle, interface_queue, s['getblock'], True)
 
         elif 'settxfee' in s:
-            response = rpcrequest(rpchandle, 'settxfee', False, s['settxfee'])
-            interface_queue.put({'settxfee': response})
-            
+            response = rpcrequest(rpchandle, 'settxfee', interface_queue, s['settxfee'])
+
+        elif 'walletpassphrase' in s:
+            response = rpcrequest(rpchandle, 'walletpassphrase', interface_queue, s['walletpassphrase'], 60)
+
         elif 'txid' in s:
             try:
                 tx = rpcrequest(rpchandle, 'getrawtransaction', False, s['txid'], 1)
@@ -256,6 +267,9 @@ def loop(interface_queue, rpc_queue, cfg):
                     break
 
                 iterations += 1
+
+        elif 'sendtoaddress' in s:
+            sendtoaddress(rpchandle, interface_queue, s['sendtoaddress'])
 
         elif (time.time() - last_update) > update_interval:
             update_time = time.time()

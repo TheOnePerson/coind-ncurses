@@ -112,7 +112,7 @@ def draw_input_window(state, window, rpc_queue):
         UI.addmessageline("waiting for block (will stall here if not found)", color + curses.A_BOLD, 0)
         state['mode'] = "block"
 
-    elif (len(entered_block) < 7) and entered_block.isdigit() and (int(entered_block) <= state['mininginfo']['blocks']):
+    elif (len(entered_block) < 9) and entered_block.isdigit() and (int(entered_block) <= state['mininginfo']['blocks']):
         if entered_block in state['blocks']:
             state['blocks']['browse_height'] = int(entered_block)
             state['mode'] = "block"

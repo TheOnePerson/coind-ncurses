@@ -103,6 +103,7 @@ def key_s(state, window, rpc_queue):
     if state['mode'] == 'wallet':
         if 'wallet' in state:
             state['wallet']['mode'] = 'sendtoaddress'
+            state['newtransaction'] = {}
             wallet.draw_window(state, window, rpc_queue)
 
 def go_to_latest_block(state, window, rpc_queue):

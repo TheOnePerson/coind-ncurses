@@ -121,8 +121,22 @@ def getwalletinfo(s, state, window, rpc_queue):
     if state['mode'] == "wallet":
         wallet.draw_window(state, window, rpc_queue)
 
+def sendtoaddress(s, state, window, rpc_queue):
+    #TODO: WalletLock! (And inform on error)
+    if state['mode'] == "wallet":
+        if state['wallet']['mode'] == 'sendtoaddress':
+            state['wallet']['mode'] = 'tx'
+            rpc_queue.put('listsinceblock')
+            rpc_queue.put('getwalletinfo')
+
+def walletpassphrase(s, state, window, rpc_queue):
+    if 'newtransaction' in state:
+        if 'address' in state['newtransaction']:
+            s = {'sendtoaddress': {'address': state['newtransaction']['address'], 'amount': state['newtransaction']['amount'], 'comment': state['newtransaction']['comment'], 'comment_to': state['newtransaction']['comment_to']}}
+            rpc_queue.put(s)
+            state['newtransaction'] = {}
+
 def settxfee(s, state, window, rpc_queue):
-    window.addstr(0,10,"DEBUG! settxfee process")   #DEBUG!
     state['wallet']['mode'] = 'tx'
     rpc_queue.put('getwalletinfo')
     wallet.draw_window(state, window, rpc_queue)
@@ -182,7 +196,7 @@ def listsinceblock(s, state, window, rpc_queue):
             if 'fee' in entry:
                 delta += entry['fee'] # this fails if not all inputs owned by wallet; could be 'too negative'
             output_string += "% 17.8f " % delta + unit
-            output_string += " " + "% 17.8f" % entry['cumulative_balance'] + unit
+            output_string += " " + "% 17.8f" % entry['cumulative_balance'] + " " + unit
             state['wallet']['view_string'].append(output_string)
             if delta < 0:
                 state['wallet']['view_colorpair'].append(3)
@@ -361,6 +375,8 @@ def queue(state, window, interface_queue, rpc_queue=None):
         elif 'listreceivedbyaddress' in s: listreceivedbyaddress(s, state, window, rpc_queue)
         elif 'lastblocktime' in s: lastblocktime(s, state, window)
         elif 'txid' in s: txid(s, state, window, rpc_queue)
+        elif 'sendtoaddress' in s: sendtoaddress(s, state, window, rpc_queue)
+        elif 'walletpassphrase' in s: walletpassphrase(s, state, window, rpc_queue)
         elif 'consolecommand' in s: consolecommand(s, state, window, rpc_queue)
         elif 'estimatefee' in s: estimatefee(s, state, window)
 

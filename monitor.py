@@ -17,12 +17,27 @@ def draw_window(state, old_window, rpc_queue, do_clear = True):
     load_avg = os.getloadavg()
     g.addstr_rjust(window, 1, "Load avg: " + "{:.2f}".format(load_avg[0]) + " / " + "{:.2f}".format(load_avg[1]) + " / " + "{:.2f}".format(load_avg[2]), curses.A_BOLD, 1)
 
+    # pad lines are optionial - depending on window size
+    padline = [1, 1, 1, 1]
+    (this_y, this_x) = window.getmaxyx()
+    if this_y <= 15:
+        padline[3] = 0
+    if this_y <= 14:
+        padline[2] = 0
+    if this_y <= 13:
+        padline[1] = 0
+    if this_y <= 12:
+        padline[0] = 0
+
+
     if 'version' in state:
         if state['testnet'] == 1:
+            g.testnet = True;
             color = curses.color_pair(2)
-            window.addstr(1, 1, g.rpc_deamon + " v" + state['version'] + " (testnet)", color + curses.A_BOLD)
+            window.addstr(1, 1, g.rpc_deamon + " v" + state['version'] + " (TESTNET)", color + curses.A_BOLD)
             unit = g.coin_unit_test
         else:
+            g.testnet = False;
             color = curses.color_pair(1)
             window.addstr(1, 1, g.rpc_deamon + " v" + state['version'] + " ", color + curses.A_BOLD)
             unit = g.coin_unit
@@ -51,11 +66,11 @@ def draw_window(state, old_window, rpc_queue, do_clear = True):
                 window.attrset(curses.A_REVERSE + curses.color_pair(5) + curses.A_BOLD)
                 blockdata.pop('new')
 
-            window.addstr(3, 1, "{:7d}".format(int(height)) + ": " + str(blockdata['hash']))
-            window.addstr(4, 1, "{:,d}".format(int(blockdata['size'])) + " bytes (" + "{:,.2f}".format(float(blockdata['size']/1024)) + " KB)       ")
+            window.addstr(2 + padline[0], 1, "{:7d}".format(int(height)) + ": " + str(blockdata['hash']))
+            window.addstr(3 + padline[0], 1, "{:,d}".format(int(blockdata['size'])) + " bytes (" + "{:,.2f}".format(float(blockdata['size']/1024)) + " KB)       ")
             tx_count = len(blockdata['tx'])
             bytes_per_tx = blockdata['size'] / tx_count
-            window.addstr(5, 1, "Transactions: " + "{:,d}".format(int(tx_count)) + " (" + "{:,d}".format(int(bytes_per_tx)) + " bytes/tx)")
+            window.addstr(4 + padline[0], 1, "Transactions: " + "{:,d}".format(int(tx_count)) + " (" + "{:,d}".format(int(bytes_per_tx)) + " bytes/tx)")
 
             if 'coinbase_amount' in blockdata:
                 block_subsidy = float(g.reward_base / (2 ** (state['mininginfo']['blocks'] // g.halving_blockamount)))
@@ -67,7 +82,7 @@ def draw_window(state, old_window, rpc_queue, do_clear = True):
                     if coinbase_amount > 0:
                         fee_percentage = "%0.2f" % ((total_fees / coinbase_amount) * 100)
                         coinbase_amount_str = "%0.8f" % coinbase_amount
-                        window.addstr(7, 1, "Total block reward: " + coinbase_amount_str + " " + unit + " (" + fee_percentage + "% fees)")
+                        window.addstr(5 + padline[0] + padline[1], 1, "Total block reward: " + coinbase_amount_str + " " + unit + " (" + fee_percentage + "% fees)")
 
                     if tx_count > 1:
                         tx_count -= 1 # the coinbase can't pay a fee
@@ -76,10 +91,10 @@ def draw_window(state, old_window, rpc_queue, do_clear = True):
                         total_fees_str = "%0.8f" % total_fees + " " + unit
                         fees_per_tx = "%0.5f" % fees_per_tx + " m" + unit + "/tx"
                         fees_per_kb = "%0.5f" % fees_per_kb + " m" + unit + "/KB"
-                        window.addstr(8, 1, "Fees: " + total_fees_str + " (avg " +  fees_per_tx + ", ~" + fees_per_kb + ")")
+                        window.addstr(6 + padline[0] + padline[1], 1, "Fees: " + total_fees_str + " (avg " +  fees_per_tx + ", ~" + fees_per_kb + ")")
 
 
-            g.addstr_rjust(window, 4, "Block timestamp: " + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(blockdata['time'])), curses.A_NORMAL, 1)
+            g.addstr_rjust(window, 3 + padline[0], "Block timestamp: " + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(blockdata['time'])), curses.A_NORMAL, 1)
             
             if state['lastblocktime'] == 0:
                 recvdelta_string = "        "
@@ -100,21 +115,20 @@ def draw_window(state, old_window, rpc_queue, do_clear = True):
             else:
                 stampdelta_string = "     (stamp in future)"
 
-            g.addstr_rjust(window, 5, "Age: " + recvdelta_string + " " + stampdelta_string, curses.A_NORMAL, 1)
-            # window.addstr(5, 38, "Age: " + recvdelta_string + " " + stampdelta_string)
+            g.addstr_rjust(window, 4 + padline[0], "Age: " + recvdelta_string + " " + stampdelta_string, curses.A_NORMAL, 1)
 
             if 'chainwork' in blockdata:
                 log2_chainwork = math.log(int(blockdata['chainwork'], 16), 2)
                 try:
-                    window.addstr(14, 1, "Chain work: 2**" + "%0.6f" % log2_chainwork)
+                    window.addstr(10 + padline[0] + padline[1] + padline[2] + padline[3], 1, "Chain work: 2**" + "%0.6f" % log2_chainwork)
                 except:
                     print(log2_chainwork)
 
         diff = int(state['mininginfo']['difficulty'])
-        window.addstr(10, 1, "Diff:        " + "{:,d}".format(diff))
+        window.addstr(7 + padline[0] + padline[1] + padline[2], 1, "Diff:        " + "{:,d}".format(diff))
 
     for block_avg in state['networkhashps']:
-        index = 10
+        index = 7 + padline[0] + padline[1] + padline[2]
 
         if block_avg == 'diff':
             pass
@@ -149,19 +163,16 @@ def draw_window(state, old_window, rpc_queue, do_clear = True):
             g.addstr_rjust(window, index, "Hashrate (" + str(block_avg).rjust(4) + "): " + rate_string.rjust(13), curses.A_NORMAL, 1)
         except:
             g.addstr_rjust(window, index, "Hashrate (" + str(block_avg).rjust(4) + "): ?????????????", curses.A_NORMAL, 1)
-        # window.addstr(index, 38, "Hashrate (" + str(block_avg).rjust(4) + "): " + rate_string.rjust(13))
         index += 1
 
         pooledtx = state['mininginfo']['pooledtx']
-        g.addstr_rjust(window, 14, "Mempool transactions: " + "{:5,d}".format(int(pooledtx)), curses.A_NORMAL, 1)
-        # window.addstr(14, 38, "Mempool transactions: " + "% 5d" % pooledtx)
-
+        g.addstr_rjust(window, 10 + padline[0] + padline[1] + padline[2] + padline[3], "Mempool transactions: " + "{:5,d}".format(int(pooledtx)), curses.A_NORMAL, 1)
+        
     if 'totalbytesrecv' in state:
         recvmb = "{:,.2f}".format(float(state['totalbytesrecv']*1.0/1048576))
         sentmb = "{:,.2f}".format(float(state['totalbytessent']*1.0/1048576))
         recvsent_string = "D/U: " + recvmb + " / " + sentmb + " MB"
         g.addstr_rjust(window, 0, recvsent_string, curses.A_BOLD, 1)
-        # window.addstr(0, 43, recvsent_string.rjust(30), curses.A_BOLD)
 
     if 'estimatefee' in state:
         string = "estimatefee:"
@@ -169,18 +180,16 @@ def draw_window(state, old_window, rpc_queue, do_clear = True):
             if item['value'] > 0:
                 string += " (" + str(item['blocks']) + ")" + "%4.2f" % (item['value']*1000) + " m" + unit
         if len(string) > 12:
-            g.addstr_rjust(window, 15, string, curses.A_NORMAL, 1)
-            # window.addstr(15, 38, string)
+            g.addstr_rjust(window, 11 + padline[0] + padline[1] + padline[2] + padline[3], string, curses.A_NORMAL, 1)
 
     if 'mininginfo' in state:
         errors = state['mininginfo']['errors']
         if len(errors):
-            if state['y'] < 20:
-                y = state['y'] - 3
-            else:
-                y = 17
-            window.addstr(y, 1, errors[:72], curses.color_pair(5) + curses.A_BOLD + curses.A_REVERSE)
-            window.addstr(y+1, 1, errors[72:142].rjust(72), curses.color_pair(5) + curses.A_BOLD + curses.A_REVERSE)
+            try:
+                y = this_y-1
+                window.addstr(y, 1, errors[:g.x - 1], curses.color_pair(5) + curses.A_BOLD + curses.A_REVERSE)
+            except:
+                pass
 
     window.refresh()
     footer.draw_window(state, rpc_queue)

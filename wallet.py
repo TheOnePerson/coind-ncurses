@@ -4,7 +4,7 @@ import curses, time
 
 
 import global_mod as g
-from getstr import UserInput
+import getstr
 import footer
 
 def draw_window(state, window, rpc_queue=None, do_clear = True):
@@ -35,19 +35,22 @@ def draw_window(state, window, rpc_queue=None, do_clear = True):
             if 'paytxfee' in state['walletinfo']:
                 fee_string = "Fee: " + "%0.8f" % state['walletinfo']['paytxfee'] + " " + unit + " per kB"
                 window.addstr(1, 1, fee_string, curses.A_BOLD)
+            fee_string = "Wallet status: "
             if 'unlocked_until' in state['walletinfo']:
-                fee_string = "Wallet status: "
                 if state['walletinfo']['unlocked_until'] == 0:
                     fee_string += 'locked'
                     window.addstr(2, 1, fee_string, curses.A_BOLD)
                 else:
                     fee_string += 'unlocked until ' + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(state['walletinfo']['unlocked_until']))
                     window.addstr(2, 1, fee_string, curses.A_BOLD + curses.A_REVERSE)
+            else:
+                fee_string += 'not encrypted!'
+                window.addstr(2, 1, fee_string, curses.A_BOLD + curses.A_REVERSE)
 
         if state['wallet']['mode'] == 'tx':
             g.addstr_rjust(window, 0, "(W: refresh, A: list addresses)", curses.A_BOLD, 1)
             g.addstr_rjust(window, 1, "(X: set tx fee, R: new receiving address)", curses.A_BOLD, 1)
-            g.addstr_rjust(window, 2, "(S: send " + g.coin_unit + ")", curses.A_BOLD, 1)
+            g.addstr_rjust(window, 2, "(S: send " + unit + ")", curses.A_BOLD, 1)
             draw_transactions(state)
         elif state['wallet']['mode'] == 'settxfee':
             draw_fee_input_window(state, window, rpc_queue)
@@ -58,7 +61,7 @@ def draw_window(state, window, rpc_queue=None, do_clear = True):
         else:
             g.addstr_rjust(window, 0, "(A: refresh, W: list tx)", curses.A_BOLD, 1)
             g.addstr_rjust(window, 1, "(X: set tx fee, R: new receiving address)", curses.A_BOLD, 1)
-            g.addstr_rjust(window, 2, "(S: send " + g.coin_unit + ")", curses.A_BOLD, 1)
+            g.addstr_rjust(window, 2, "(S: send " + unit + ")", curses.A_BOLD, 1)
             draw_addresses(state)
 
     else:
@@ -123,23 +126,25 @@ def draw_addresses(state):
 
 def draw_fee_input_window(state, window, rpc_queue):
     color = curses.color_pair(1)
+    unit = g.coin_unit
     if g.testnet:
         color = curses.color_pair(2)
+        unit = g.coin_unit_test
 
-    UI = UserInput(window, "fee input mode")
+    UI = getstr.UserInput(window, "fee input mode")
     if 'walletinfo' in state:
         if 'paytxfee' in state['walletinfo']:
-            fee_string = "Current transaction fee: " + "%0.8f" % state['walletinfo']['paytxfee'] + " " + g.coin_unit + " per kB"
+            fee_string = "Current transaction fee: " + "%0.8f" % state['walletinfo']['paytxfee'] + " " + unit + " per kB"
             UI.addline(fee_string)
 
     if 'estimatefee' in state:
         string = "Estimatefee: "
         for item in state['estimatefee']:
             if item['value'] > 0:
-                string += "{:0.8f}".format(item['value']) + " " + g.coin_unit + " per kB (" + str(item['blocks']) + (" blocks) " if int(item['blocks']) > 1 else " block) ")
+                string += "{:0.8f}".format(item['value']) + " " + unit + " per kB (" + str(item['blocks']) + (" blocks) " if int(item['blocks']) > 1 else " block) ")
         UI.addline(string, curses.A_NORMAL)
 
-    UI.addline("Please enter new transaction fee in " + g.coin_unit + " per kB:", curses.A_BOLD)
+    UI.addline("Please enter new transaction fee in " + unit + " per kB:", curses.A_BOLD)
     
     try:
         new_fee = float(UI.getstr(64))
@@ -148,7 +153,7 @@ def draw_fee_input_window(state, window, rpc_queue):
     
     if new_fee >= 0:
         s = {'settxfee': "{:0.8f}".format(new_fee)}
-        UI.addmessageline("Setting transaction fee value to " + "{:0.8f}".format(new_fee) + " " + g.coin_unit + " per kB...", color + curses.A_BOLD)
+        UI.addmessageline("Setting transaction fee value to " + "{:0.8f}".format(new_fee) + " " + unit + " per kB...", color + curses.A_BOLD)
         rpc_queue.put(s)
     else:
         UI.addmessageline("No valid fee amount entered", color + curses.A_BOLD)
@@ -161,7 +166,7 @@ def draw_new_address_window(state, window, rpc_queue):
     if g.testnet:
         color = curses.color_pair(2)
 
-    UI = UserInput(window, "new receiving address mode")
+    UI = getstr.UserInput(window, "new receiving address mode")
 
     if 'newaddress' in state['wallet']:
         if 'newlabel' in state['wallet']:
@@ -197,13 +202,15 @@ def draw_new_address_window(state, window, rpc_queue):
 
 def draw_send_coins_window(state, window, rpc_queue):
     color = curses.color_pair(1)
+    unit = g.coin_unit
     if g.testnet:
         color = curses.color_pair(2)
+        unit = g.coin_unit_test
 
-    UI = UserInput(window, "send " + g.coin_unit + " mode")
+    UI = getstr.UserInput(window, "send " + unit + " mode")
 
-    if 'balance' in state:
-        display_string = "Current balance: " + "%0.8f" % state['balance'] + " " + g.coin_unit
+    if 'balance' in state and g.y >= 14:
+        display_string = "Current balance: " + "%0.8f" % state['balance'] + " " + unit
         if 'unconfirmedbalance' in state:
             if state['unconfirmedbalance'] != 0:
                 display_string += " (+" + "%0.8f" % state['unconfirmedbalance'] + " unconf)"
@@ -213,21 +220,21 @@ def draw_send_coins_window(state, window, rpc_queue):
         UI.addline(display_string)
 
     if 'walletinfo' in state:
-        if 'paytxfee' in state['walletinfo']:
-            display_string = "Current transaction fee: " + "%0.8f" % state['walletinfo']['paytxfee'] + " " + g.coin_unit + " per kB"
+        if 'paytxfee' in state['walletinfo'] and g.y >= 15:
+            display_string = "Current transaction fee: " + "%0.8f" % state['walletinfo']['paytxfee'] + " " + unit + " per kB"
             UI.addline(display_string, curses.A_NORMAL)
 
-    if 'estimatefee' in state:
+    if 'estimatefee' in state and g.y >= 17:
         display_string = "Estimatefee: "
         for item in state['estimatefee']:
             if item['value'] > 0:
-                display_string += "{:0.8f}".format(item['value']) + " " + g.coin_unit + " per kB (" + str(item['blocks']) + (" blocks) " if int(item['blocks']) > 1 else " block) ")
+                display_string += "{:0.8f}".format(item['value']) + " " + unit + " per kB (" + str(item['blocks']) + (" blocks) " if int(item['blocks']) > 1 else " block) ")
         UI.addline(display_string, curses.A_NORMAL)
 
     err_msg = ""
     abort = False
 
-    UI.addline("Please enter amount of " + g.coin_unit + " so send:", curses.A_BOLD)
+    UI.addline("Please enter amount of " + unit + " so send:", curses.A_BOLD)
     try:
         amount = float(UI.getstr(32))
     except ValueError:
@@ -235,35 +242,77 @@ def draw_send_coins_window(state, window, rpc_queue):
     
     if amount > 0:
 
+        state['newtransaction']['amount'] = "%0.8f" % amount
+
         UI.addline("Please enter receiving address:", curses.A_BOLD)
         try:
             address = UI.getstr(35).strip()
         except:
             abort = True
 
-        if len(address) >= 26 and len(address) <= 35 and (address.startswith('1') or address.startswith('3')) and not abort:
+        if len(address) >= 26 and len(address) <= 35 and ((not g.testnet and (address.startswith('1') or address.startswith('3'))) or (g.testnet and (address.startswith('m') or address.startswith('n') or address.startswith('2')))) and not abort:
 
-            UI.addline("Please enter a comment (optional):", curses.A_BOLD)
+            state['newtransaction']['address'] = address
+            
+            UI.addline("Please enter a comment on the transaction (optional):", curses.A_BOLD)
             try:
-                comment = UI.getstr(64).strip()
+                comment = UI.getstr(128).strip()
             except:
                 abort = True
 
             if not abort:
 
-                UI.addline()
-                UI.addline("You will send " + "{:0.8f}".format(amount) + " " + g.coin_unit + " to the address '" + address + "'.")
-                UI.addline()
-                # TODO: check if wallet is locked! And add blank lines only if there is space for it!
-                UI.addline("Please confirm this transaction by providing your wallet's passphrase:", curses.A_BOLD)
+                state['newtransaction']['comment'] = comment
+                
+                UI.addline("Please enter a comment on the recipient (optional):", curses.A_BOLD)
                 try:
-                    password = UI.getstr(128)
+                    comment_to = UI.getstr(128).strip()
                 except:
                     abort = True
 
-                #s = {'settxfee': "{:0.8f}".format(new_fee)}
-                #UI.addmessageline("Setting transaction fee value to " + "{:0.8f}".format(new_fee) + " " + g.coin_unit + " per kB...", color + curses.A_BOLD)
-                #rpc_queue.put(s)
+                if not abort:
+
+                    state['newtransaction']['comment_to'] = comment_to
+                
+                    if g.y >= 19:
+                        UI.addline()
+                    if g.y >= 16:
+                        UI.addline("You will send " + "{:0.8f}".format(amount) + " " + unit + " (+ fee) to the address '" + address + "'")
+                    if g.y >= 18:
+                        UI.addline()
+
+                    encrypted = False
+                    if 'walletinfo' in state:
+                        if 'unlocked_until' in state['walletinfo']:
+                            encrypted = True
+
+                    if encrypted:
+                        UI.addline("Please confirm this transaction by providing your wallet's passphrase:", curses.A_BOLD)
+                        try:
+                            password = getstr.getstr(128, UI._y, 1, "*")
+                            pass
+                        except:
+                            abort = True
+                    else:
+                        abort = not UI.continue_yesno(False)
+                        UI._y -= 1
+
+                    if not abort:
+
+                        state['newtransaction']['y'] = UI._y
+
+                        if encrypted:
+                            if g.y >= 18:
+                                UI.addline()
+                            s = {'walletpassphrase': password}
+                            rpc_queue.put(s)
+                            UI.addmessageline("Unlocking wallet and sending transaction...", color + curses.A_BOLD)
+                        else:
+                            if g.y >= 17:
+                                UI.addline()
+                            s = {'sendtoaddress': {'address': address, 'amount': str(amount), 'comment': comment, 'comment_to': comment_to}}
+                            rpc_queue.put(s)
+                            UI.addmessageline("Sending transaction...", color + curses.A_BOLD)
 
         else:
             err_msg = "Invalid receiving address."
@@ -278,3 +327,4 @@ def draw_send_coins_window(state, window, rpc_queue):
         UI.clear()
         state['wallet']['mode'] = 'addresses'
         rpc_queue.put('listsinceblock')
+
