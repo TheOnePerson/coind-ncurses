@@ -56,7 +56,7 @@ def init(interface_queue, cfg):
         return False
 
 def rpcrequest(rpchandle, request, interface_queue, *args):
-    try:
+    #try:
         log('debug.log', 2, 'rpcrequest: ' + request + ', args: ' + str(args))
 
         request_time = time.time()
@@ -69,13 +69,13 @@ def rpcrequest(rpchandle, request, interface_queue, *args):
             interface_queue.put({request: response})
 
         return response
-    except:
-        log('debug.log', 2, request + ' failed')
-        return False
+    #except:
+    #    log('debug.log', 2, request + ' failed')
+    #    return False
 
 def getblock(rpchandle, interface_queue, block_to_get, queried = False, new = False):
     try:
-        if (len(str(block_to_get)) < 7) and str(block_to_get).isdigit(): 
+        if (len(str(block_to_get)) < 9) and str(block_to_get).isdigit(): 
             blockhash = rpcrequest(rpchandle, 'getblockhash', False, block_to_get)
         elif len(block_to_get) == 64:
             blockhash = block_to_get
@@ -97,7 +97,7 @@ def getblock(rpchandle, interface_queue, block_to_get, queried = False, new = Fa
 
 def sendtoaddress(rpchandle, interface_queue, s):
     try:
-        txid = rpcrequest(rpchandle, 'sendtoaddress', interface_queue, s['address'], s['amount'], s['comment'], s['comment_to'])
+        txid = rpcrequest(rpchandle, 'sendtoaddress', False, s['address'], s['amount'], s['comment'], s['comment_to'])
         interface_queue.put({'sendtoaddress': txid})
         return txid
 
@@ -149,7 +149,11 @@ def loop(interface_queue, rpc_queue, cfg):
                     arguments[index] = int(arguments[index])
                 elif arguments[index] == "False":
                     arguments[index] = False
+                elif arguments[index] == "false":
+                    arguments[index] = False
                 elif arguments[index] == "True":
+                    arguments[index] = True
+                elif arguments[index] == "true":
                     arguments[index] = True
                 else:
                     try:
@@ -173,13 +177,19 @@ def loop(interface_queue, rpc_queue, cfg):
         elif 'settxfee' in s:
             response = rpcrequest(rpchandle, 'settxfee', interface_queue, s['settxfee'])
 
+        elif 'backupwallet' in s:
+            response = rpcrequest(rpchandle, 'backupwallet', interface_queue, s['backupwallet'])
+
         elif 'walletpassphrase' in s:
             response = rpcrequest(rpchandle, 'walletpassphrase', interface_queue, s['walletpassphrase'], 60)
 
         elif 'txid' in s:
             try:
+                # put txid onto browse stack
+                if not 'notrack' in s:
+                    interface_queue.put({'put_txid': s['txid']})
+                # get actual data
                 tx = rpcrequest(rpchandle, 'getrawtransaction', False, s['txid'], 1)
-                log('debug.log', 2, 'getrawtransaction request returned: ' + str(tx))
                 tx['size'] = len(tx['hex'])/2
 
                 if 'coinbase' in tx['vin'][0]: # should always be at least 1 vin
@@ -236,6 +246,9 @@ def loop(interface_queue, rpc_queue, cfg):
         elif 'listsinceblock' in s:
             rpcrequest(rpchandle, 'listsinceblock', interface_queue)
 
+        elif 'wallet_toggle_tx' in s:
+            interface_queue.put(s)
+
         elif 'listreceivedbyaddress' in s:
             rpcrequest(rpchandle, 'listreceivedbyaddress', interface_queue, 0, True)
 
@@ -270,6 +283,9 @@ def loop(interface_queue, rpc_queue, cfg):
 
         elif 'sendtoaddress' in s:
             sendtoaddress(rpchandle, interface_queue, s['sendtoaddress'])
+
+        elif 'walletlock' in s:
+            rpcrequest(rpchandle, 'walletlock', interface_queue)
 
         elif (time.time() - last_update) > update_interval:
             update_time = time.time()

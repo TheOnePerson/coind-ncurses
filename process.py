@@ -36,10 +36,18 @@ def getinfo(s, state, window, rpc_queue):
     state['version'] += '.' + str((s['getinfo']['version'] % 1000000) / 10000)
     state['version'] += '.' + str((s['getinfo']['version'] % 10000) / 100)
     state['version'] += '.' + str((s['getinfo']['version'] % 100))
+    if 'walletversion' in s['getinfo']:
+        g.wallet_support = True
+    else:
+        g.wallet_support = False
+        if 'wallet' in g.modes:
+            g.modes.remove('wallet')
     if s['getinfo']['testnet'] == True:
         state['testnet'] = 1
+        g.testnet = True
     else:
         state['testnet'] = 0
+        g.testnet = False
 
     if state['mode'] == "splash":
         splash.draw_window(state, window, rpc_queue)
@@ -122,10 +130,13 @@ def getwalletinfo(s, state, window, rpc_queue):
         wallet.draw_window(state, window, rpc_queue)
 
 def sendtoaddress(s, state, window, rpc_queue):
-    #TODO: WalletLock! (And inform on error)
     if state['mode'] == "wallet":
         if state['wallet']['mode'] == 'sendtoaddress':
+            state['newtransaction']['result'] = str(s['sendtoaddress'])
+            wallet.draw_transaction_update(state, window)
+            state['newtransaction'] = {}
             state['wallet']['mode'] = 'tx'
+            rpc_queue.put('walletlock')
             rpc_queue.put('listsinceblock')
             rpc_queue.put('getwalletinfo')
 
@@ -134,7 +145,6 @@ def walletpassphrase(s, state, window, rpc_queue):
         if 'address' in state['newtransaction']:
             s = {'sendtoaddress': {'address': state['newtransaction']['address'], 'amount': state['newtransaction']['amount'], 'comment': state['newtransaction']['comment'], 'comment_to': state['newtransaction']['comment_to']}}
             rpc_queue.put(s)
-            state['newtransaction'] = {}
 
 def settxfee(s, state, window, rpc_queue):
     state['wallet']['mode'] = 'tx'
@@ -148,10 +158,27 @@ def getnewaddress(s, state, window, rpc_queue):
             state['wallet']['mode'] = 'newaddress'
         wallet.draw_window(state, window, rpc_queue)
 
-def listsinceblock(s, state, window, rpc_queue):
-    state['wallet'] = s['listsinceblock']
+def backupwallet(s, state, window, rpc_queue):
+    if state['mode'] == "wallet":
+        if state['wallet']['mode'] == 'backupwallet':
+            state['wallet']['mode'] = 'tx'
+            rpc_queue.put('getwalletinfo')
+            rpc_queue.put('listsinceblock')
+
+def wallet_toggle_tx(s, state, window, rpc_queue):
+    if state['mode'] == "wallet":
+        if state['wallet']['mode'] == 'tx':
+            state['wallet']['verbose'] = 1 - state['wallet']['verbose']
+            listsinceblock(s, state, window, rpc_queue, False)
+
+
+def listsinceblock(s, state, window, rpc_queue, reload = True):
+    if reload:
+        state['wallet'] = s['listsinceblock']
     state['wallet']['cursor'] = 0
     state['wallet']['offset'] = 0
+    if not 'verbose' in state['wallet']:
+        state['wallet']['verbose'] = 0
 
     state['wallet']['view_string'] = []
     state['wallet']['view_colorpair'] = []
@@ -181,6 +208,9 @@ def listsinceblock(s, state, window, rpc_queue):
         if state['testnet']:
             unit = g.coin_unit_test
 
+    indent = "          "
+    comment_split = " To: "
+    comment_maxlen = (g.x - len(indent) - len(comment_split)) // 2
     for entry in state['wallet']['transactions']:
         if 'txid' in entry:
             entry_time = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(entry['time']))
@@ -208,11 +238,20 @@ def listsinceblock(s, state, window, rpc_queue):
             state['wallet']['view_colorpair'].append(0)
 
             if 'address' in entry: # TODO: more sanity checking here
-                output_string = "          " + entry['category'].ljust(15) + entry['address']
+                output_string = indent + entry['category'].ljust(15) + entry['address']
             else:
-                output_string = "          unknown transaction type"
+                output_string = indent + "unknown transaction type"
             state['wallet']['view_string'].append(output_string)
             state['wallet']['view_colorpair'].append(0)
+
+            if state['wallet']['verbose'] > 0:
+                if 'comment' in entry and 'to' in entry:
+                    output_string = indent + unidecode(entry['comment'][:comment_maxlen].ljust(comment_maxlen)) + comment_split + unidecode(entry['to'][:comment_maxlen])
+                    state['wallet']['view_string'].append(output_string)
+                    state['wallet']['view_colorpair'].append(0)
+                else:
+                    state['wallet']['view_string'].append("")
+                    state['wallet']['view_colorpair'].append(0)
 
             state['wallet']['view_string'].append("")
             state['wallet']['view_colorpair'].append(0)
@@ -280,6 +319,14 @@ def listreceivedbyaddress(s, state, window, rpc_queue):
 def lastblocktime(s, state, window):
     state['lastblocktime'] = s['lastblocktime']
 
+def put_txid(s, state, window, rpc_queue):
+    if not 'txid_history' in state:
+        state['txid_history'] = []
+    if len(state['txid_history']) >= 100:
+        # only keep track of the last 100 txids
+        del state['txid_history'][0]
+    state['txid_history'].append(s['put_txid'])
+
 def txid(s, state, window, rpc_queue):
     if s['size'] < 0:
         if 'tx' in state:
@@ -328,7 +375,7 @@ def txid(s, state, window, rpc_queue):
                         buffer_string += " [UNSPENT]"
 
             state['tx']['total_outputs'] += vout['value']
-            state['tx']['vout_string'].extend(textwrap.wrap(buffer_string,70)) # change this to scale with window ?
+            state['tx']['vout_string'].extend(textwrap.wrap(buffer_string,g.x - 5)) # change this to scale with window ?
 
     if 'total_inputs' in s:
         state['tx']['total_inputs'] = s['total_inputs']
@@ -369,12 +416,15 @@ def queue(state, window, interface_queue, rpc_queue=None):
         elif 'getpeerinfo' in s: getpeerinfo(s, state, window, rpc_queue)
         elif 'getwalletinfo' in s: getwalletinfo(s, state, window, rpc_queue)
         elif 'settxfee' in s: settxfee(s, state, window, rpc_queue)
+        elif 'backupwallet' in s: backupwallet(s, state, window, rpc_queue)
         elif 'getnewaddress' in s: getnewaddress(s, state, window, rpc_queue)
         elif 'getchaintips' in s: getchaintips(s, state, window, rpc_queue)
         elif 'listsinceblock' in s: listsinceblock(s, state, window, rpc_queue)
+        elif 'wallet_toggle_tx' in s: wallet_toggle_tx(s, state, window, rpc_queue)
         elif 'listreceivedbyaddress' in s: listreceivedbyaddress(s, state, window, rpc_queue)
         elif 'lastblocktime' in s: lastblocktime(s, state, window)
         elif 'txid' in s: txid(s, state, window, rpc_queue)
+        elif 'put_txid' in s: put_txid(s, state, window, rpc_queue)
         elif 'sendtoaddress' in s: sendtoaddress(s, state, window, rpc_queue)
         elif 'walletpassphrase' in s: walletpassphrase(s, state, window, rpc_queue)
         elif 'consolecommand' in s: consolecommand(s, state, window, rpc_queue)

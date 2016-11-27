@@ -2,7 +2,7 @@
 
 from curses import A_NORMAL
 
-version = "v0.0.24"
+version = "v0.0.25"
 modes = ['monitor', 'wallet', 'peers', 'block', 'tx', 'console', 'net', 'forks', 'quit']
 
 # the following line just declares the default coinmode. Will be overwritten by main.py if user has provided another value as argument
@@ -25,6 +25,7 @@ testnet = None
 x = None
 y = None
 viewport_heigth = None
+wallet_support = True		# default, get's adjusted in process.py
 
 def get_default_coinmode():
 	return 'BTC'

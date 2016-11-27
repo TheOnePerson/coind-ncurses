@@ -8,9 +8,9 @@ import footer
 def draw_window(state, window, rpc_queue):
     window.clear()
     window.refresh()
-    win_header = curses.newwin(1, 76, 0, 0)
+    win_header = curses.newwin(1, g.x, 0, 0)
 
-    win_header.addstr(0, 1, "G: enter command".rjust(72), curses.A_BOLD + curses.color_pair(5))
+    g.addstr_rjust(win_header, 0, "(G: enter command, E: erase output)", curses.A_BOLD + curses.color_pair(5), 1)
     win_header.refresh()
 
     if len(state['console']['rbuffer']):
@@ -19,8 +19,8 @@ def draw_window(state, window, rpc_queue):
     footer.draw_window(state, rpc_queue)
 
 def draw_buffer(state):
-    window_height = state['y'] - 3
-    win_buffer = curses.newwin(window_height, state['x'], 1, 0)
+    window_height = g.y - 3
+    win_buffer = curses.newwin(window_height, g.x, 1, 0)
 
     #TODO: reimplement and print JSON dicts in a more readable format
     lines = []
@@ -36,8 +36,11 @@ def draw_buffer(state):
     numlines = len(lines)
 
     offset = state['console']['offset']
+    if offset + 1 >= numlines:
+        offset = numlines - 2
+        state['console']['offset'] = offset
 
-    for index in xrange(offset, offset+window_height):
+    for index in xrange(offset, offset + window_height):
         if index < numlines:
             if index == offset+window_height-1:
                 win_buffer.addstr(window_height-(index-offset)-1, 1, "...")
@@ -64,7 +67,7 @@ def draw_buffer(state):
     win_buffer.refresh()
 
 def draw_input_box(state, rpc_queue):
-    entered_command = getstr.getstr(state['x'], state['y']-2, 1) # w, y, x
+    entered_command = getstr.getstr(state['x'], state['y']-2, 1).strip() # w, y, x
 
     if entered_command == "":
         pass

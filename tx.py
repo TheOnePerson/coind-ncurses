@@ -9,7 +9,7 @@ def draw_window(state, window, rpc_queue):
     # TODO: add transaction locktime, add sequence to inputs
     window.clear()
     window.refresh()
-    win_header = curses.newwin(3, 75, 0, 0)
+    win_header = curses.newwin(3, g.x, 0, 0)
 
     unit = g.coin_unit
     if 'testnet' in state:
@@ -43,14 +43,16 @@ def draw_window(state, window, rpc_queue):
         else:
             win_header.addstr(2, 1, "unconfirmed", curses.A_BOLD)
 
-        win_header.addstr(2, 1, str("(V: verbose, G: enter txid)").rjust(73), curses.A_BOLD)
+        history_height = 0 if not 'txid_history' in state else len(state['txid_history']) - 1
+        history_msg = "" if history_height <= 0 else ", J: browse back"
+        g.addstr_rjust(win_header, 2, "(V: verbose, G: enter txid" + history_msg + ")", curses.A_BOLD, 1)
 
         draw_inputs(state)
         draw_outputs(state)
 
     else:
         if rpc_queue.qsize() > 0:
-            win_header.addstr(0, 1, "...waiting for transaction information being processed...", curses.A_BOLD + curses.color_pair(3))
+            g.addstr_cjust(win_header, 0, "...waiting for transaction information being processed...", curses.A_BOLD + curses.color_pair(3))
         else:
             win_header.addstr(0, 1, "no transaction loaded or no transaction information found", curses.A_BOLD + curses.color_pair(3))
             win_header.addstr(1, 1, "if you have entered one, consider running " + g.rpc_deamon + " with -txindex", curses.A_BOLD)
@@ -64,9 +66,11 @@ def draw_inputs(state):
     window_width = state['x']
     win_inputs = curses.newwin(window_height, window_width, 3, 0)
     if state['tx']['mode'] == 'inputs':
-        win_inputs.addstr(0, 1, str("inputs:").ljust(20) + str("(UP/DOWN: select, ENTER: view)").rjust(53), curses.A_BOLD + curses.color_pair(3))
+        win_inputs.addstr(0, 1, "inputs:", curses.A_BOLD + curses.color_pair(3))
+        g.addstr_rjust(win_inputs, 0, "(UP/DOWN: select, ENTER: view)", curses.A_BOLD + curses.color_pair(3), 1)
     else:
-        win_inputs.addstr(0, 1, str("inputs:").ljust(20) + str("(TAB: switch to)").rjust(53), curses.A_BOLD + curses.color_pair(5))
+        win_inputs.addstr(0, 1, "inputs:", curses.A_BOLD + curses.color_pair(5))
+        g.addstr_rjust(win_inputs, 0, "(TAB: switch to)", curses.A_BOLD + curses.color_pair(5), 1)
 
     # reset cursor if it's been resized off the bottom
     if state['tx']['cursor'] > state['tx']['offset'] + (window_height-2):
@@ -127,12 +131,14 @@ def draw_inputs(state):
     win_inputs.refresh()
 
 def draw_outputs(state):
-    window_height = (state['y'] - 4) / 2
-    win_outputs = curses.newwin(window_height, 75, 3+window_height, 0)
+    window_height = (g.y - 4) / 2
+    win_outputs = curses.newwin(window_height, g.x, 3 + window_height, 0)
     if state['tx']['mode'] == 'outputs':
-        win_outputs.addstr(0, 1, "outputs:                                             (UP/DOWN: scroll)", curses.A_BOLD + curses.color_pair(3))
+        win_outputs.addstr(0, 1, "outputs:", curses.A_BOLD + curses.color_pair(3))
+        g.addstr_rjust(win_outputs, 0, "(UP/DOWN: scroll)", curses.A_BOLD + curses.color_pair(3), 1)
     else:
-        win_outputs.addstr(0, 1, "outputs:                                              (TAB: switch to)", curses.A_BOLD + curses.color_pair(5))
+        win_outputs.addstr(0, 1, "outputs:", curses.A_BOLD + curses.color_pair(5))
+        g.addstr_rjust(win_outputs, 0, "(TAB: switch to)", curses.A_BOLD + curses.color_pair(5), 1)
 
     offset = state['tx']['out_offset']
 

@@ -56,9 +56,10 @@ def key_right(state, window, rpc_queue):
         pass
 
 def key_w(state, window, rpc_queue):
-    rpc_queue.put('listsinceblock')
-    rpc_queue.put('getwalletinfo')
-    change_mode(state, window, 'wallet', rpc_queue)
+    if g.wallet_support:
+        rpc_queue.put('listsinceblock')
+        rpc_queue.put('getwalletinfo')
+        change_mode(state, window, 'wallet', rpc_queue)
 
 def key_a(state, window, rpc_queue):
     if state['mode'] == 'wallet':
@@ -68,6 +69,18 @@ def key_a(state, window, rpc_queue):
             rpc_queue.put('getwalletinfo')
             rpc_queue.put(s)
             wallet.draw_window(state, window, rpc_queue)
+
+def key_e(state, window, rpc_queue):
+    if state['mode'] == 'wallet':
+        if 'wallet' in state:
+            state['wallet']['mode'] = 'backupwallet'
+            wallet.draw_window(state, window, rpc_queue)
+
+    elif state['mode'] == 'console':
+        state['console']['cbuffer'] = []
+        state['console']['rbuffer'] = []
+        state['console']['offset'] = 0
+        console.draw_window(state, window, rpc_queue)
 
 def key_p(state, window, rpc_queue):
     rpc_queue.put('getpeerinfo')
@@ -153,7 +166,7 @@ def scroll_down(state, window, rpc_queue):
 
     elif state['mode'] == "forks":
         if 'chaintips' in state and 'chaintips_offset' in state:
-            window_height = state['y'] - 4
+            window_height = state['y'] - 5
             if state['chaintips_offset'] < (len(state['chaintips']) - window_height):
                 state['chaintips_offset'] += 1
                 forks.draw_tips(state)
@@ -165,10 +178,16 @@ def scroll_down(state, window, rpc_queue):
                 if 'transactions' in state['wallet']:
                     if state['wallet']['cursor'] < (len(state['wallet']['transactions']) - 1):
                         state['wallet']['cursor'] += 1
-                        if ( (state['wallet']['cursor'] * 4 + 1 ) - state['wallet']['offset']) > window_height - 2:
-                            state['wallet']['offset'] += 4
+                        lines = 5 if state['wallet']['verbose'] > 0 else 4
+                        if (state['wallet']['cursor'] * lines) - state['wallet']['offset'] >= window_height - 1:
+                            state['wallet']['offset'] += lines  #(state['wallet']['cursor'] * lines) - 1
+                        # make sure that the last tx is fully visible
+                        if state['wallet']['cursor'] == len(state['wallet']['transactions']) - 1:
+                            if state['wallet']['offset'] + window_height - 1 <= len(state['wallet']['transactions']) * lines:
+                                state['wallet']['offset'] += (len(state['wallet']['transactions']) * lines) - (state['wallet']['offset'] + window_height - 1)
+
                         wallet.draw_transactions(state)
-            else:
+            elif state['wallet']['mode'] == 'addresses':
                 if 'addresses' in state['wallet']:
                     if len(state['wallet']['addresses']) * 4 - state['wallet']['offset'] > window_height - 1:
                         state['wallet']['offset'] += 1
@@ -217,10 +236,11 @@ def scroll_up(state, window, rpc_queue):
             if state['wallet']['mode'] == 'tx':
                 if state['wallet']['cursor'] > 0:
                     state['wallet']['cursor'] -= 1
-                    if ((state['wallet']['cursor']*4 +1) - state['wallet']['offset']) == -3:
-                        state['wallet']['offset'] -= 4
+                    lines = 5 if state['wallet']['verbose'] > 0 else 4
+                    if ((state['wallet']['cursor'] * lines - 1) < state['wallet']['offset']):
+                        state['wallet']['offset'] = state['wallet']['cursor'] * lines - 1
                     wallet.draw_transactions(state)
-            else:
+            elif state['wallet']['mode'] == 'addresses':
                 if state['wallet']['offset'] > 0:
                     state['wallet']['offset'] -= 1
                     wallet.draw_addresses(state)
@@ -318,12 +338,18 @@ def toggle_verbose_mode(state, window, rpc_queue):
                     state['tx']['loaded'] = 0
 
                     if 'total_inputs' not in state['tx']:
-                        s = {'txid': state['tx']['txid'], 'verbose': 1}
+                        s = {'txid': state['tx']['txid'], 'verbose': 1, 'notrack':1}
                     else:
-                        s = {'txid': state['tx']['txid']}
+                        s = {'txid': state['tx']['txid'], 'notrack':1}
 
                     rpc_queue.put(s)
                     footer.draw_window(state, rpc_queue)
+
+    elif state['mode'] == "wallet":
+        if 'wallet' in state:
+            if 'transactions' in state['wallet']:
+                rpc_queue.put('wallet_toggle_tx')
+                footer.draw_window(state, rpc_queue)
 
 def block_seek_back_one(state, window, rpc_queue):
     if state['mode'] == "block":
@@ -340,6 +366,16 @@ def block_seek_back_one(state, window, rpc_queue):
                         s = {'getblockhash': state['blocks']['browse_height']}
                         rpc_queue.put(s)
                         footer.draw_window(state, rpc_queue)
+
+    elif state['mode'] == "tx":
+        if 'txid_history' in state:
+            if len(state['txid_history']) > 1:
+                s = {'txid': state['txid_history'][len(state['txid_history']) - 2]}
+                del state['txid_history'][len(state['txid_history']) - 1]
+                del state['txid_history'][len(state['txid_history']) - 1]
+                rpc_queue.put(s)
+                footer.draw_window(state, rpc_queue)
+                state['mode'] = 'tx'
 
 def block_seek_forward_one(state, window, rpc_queue):
     if state['mode'] == "block":
@@ -407,6 +443,9 @@ keymap = {
 
     ord('a'): key_a,
     ord('A'): key_a,
+
+    ord('e'): key_e,
+    ord('E'): key_e,
 
     ord('x'): key_x,
     ord('X'): key_x,

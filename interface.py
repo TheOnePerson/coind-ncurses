@@ -62,7 +62,7 @@ def loop(state, window, interface_queue, rpc_queue):
     iterations = 0
     tick = 25
     while 1:
-        check_window_size(interface_queue, state, window, 12, 79, 80, 120) # min_y, min_x, max_x, max_y
+        check_window_size(interface_queue, state, window, 12, 79, 80, 120) # min_y, min_x, max_y, max_x
         error_message = process.queue(state, window, interface_queue, rpc_queue)
         if error_message:
             return error_message # ends if stop command sent by rpc

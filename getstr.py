@@ -128,9 +128,14 @@ class UserInput(object):
         y_here = self._y + 1 if y == -1 else y
         self._window.addstr(y_here, x, string, curses.color_pair(1) + curses.A_BOLD if attribs == None else attribs)
         self._window.refresh()
-        time.sleep(2.5 if timetowait == -1 else timetowait)
+        self.pause(timetowait)
         self._y = y_here + 1
         
     def clear(self):
         self._window.clear()
         self._window.refresh()
+
+    def pause(self, timetowait = -1):
+        time.sleep(2.5 if timetowait == -1 else timetowait)
+
+  

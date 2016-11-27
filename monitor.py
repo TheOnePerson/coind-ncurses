@@ -50,12 +50,14 @@ def draw_window(state, old_window, rpc_queue, do_clear = True):
             color = curses.color_pair(3)
         g.addstr_ljust(window, 0, str(state['peers']) + " peers", color + curses.A_BOLD, 0, 10, 4)
         
-    if 'balance' in state:
+    if 'balance' in state and g.wallet_support:
         balance_string = "%0.8f" % state['balance'] + " " + unit
         if 'unconfirmedbalance' in state:
             if state['unconfirmedbalance'] != 0:
                 balance_string += " (+" + "%0.8f" % state['unconfirmedbalance'] + " unconf)"
         g.addstr_ljust(window, 1, balance_string, curses.A_BOLD, 0, 10, 4)
+    else:
+        g.addstr_ljust(window, 1, "- wallet disabled -", curses.A_BOLD, 0, 10, 4)
         
     if 'mininginfo' in state:
         height = str(state['mininginfo']['blocks'])
@@ -73,7 +75,7 @@ def draw_window(state, old_window, rpc_queue, do_clear = True):
             window.addstr(4 + padline[0], 1, "Transactions: " + "{:,d}".format(int(tx_count)) + " (" + "{:,d}".format(int(bytes_per_tx)) + " bytes/tx)")
 
             if 'coinbase_amount' in blockdata:
-                block_subsidy = float(g.reward_base / (2 ** (state['mininginfo']['blocks'] // g.halving_blockamount)))
+                block_subsidy = float(float(g.reward_base) / (2 ** (state['mininginfo']['blocks'] // g.halving_blockamount)))
                 
                 if block_subsidy:
                     coinbase_amount = float(blockdata['coinbase_amount'])
@@ -82,7 +84,7 @@ def draw_window(state, old_window, rpc_queue, do_clear = True):
                     if coinbase_amount > 0:
                         fee_percentage = "%0.2f" % ((total_fees / coinbase_amount) * 100)
                         coinbase_amount_str = "%0.8f" % coinbase_amount
-                        window.addstr(5 + padline[0] + padline[1], 1, "Total block reward: " + coinbase_amount_str + " " + unit + " (" + fee_percentage + "% fees)")
+                        window.addstr(5 + padline[0] + padline[1], 1, "Total block reward: " + coinbase_amount_str + " " + unit + " (" + str(block_subsidy) + " " + unit + " +" + fee_percentage + "% fees)")
 
                     if tx_count > 1:
                         tx_count -= 1 # the coinbase can't pay a fee

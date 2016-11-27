@@ -50,7 +50,7 @@ def draw_window(state, window, rpc_queue=None, do_clear = True):
         if state['wallet']['mode'] == 'tx':
             g.addstr_rjust(window, 0, "(W: refresh, A: list addresses)", curses.A_BOLD, 1)
             g.addstr_rjust(window, 1, "(X: set tx fee, R: new receiving address)", curses.A_BOLD, 1)
-            g.addstr_rjust(window, 2, "(S: send " + unit + ")", curses.A_BOLD, 1)
+            g.addstr_rjust(window, 2, "(S: send " + unit + ", E: export wallet.dat)", curses.A_BOLD, 1)
             draw_transactions(state)
         elif state['wallet']['mode'] == 'settxfee':
             draw_fee_input_window(state, window, rpc_queue)
@@ -58,17 +58,19 @@ def draw_window(state, window, rpc_queue=None, do_clear = True):
             draw_new_address_window(state, window, rpc_queue)
         elif state['wallet']['mode'] == 'sendtoaddress':
             draw_send_coins_window(state, window, rpc_queue)
+        elif state['wallet']['mode'] == 'backupwallet':
+            draw_backup_wallet_window(state, window, rpc_queue)
         else:
             g.addstr_rjust(window, 0, "(A: refresh, W: list tx)", curses.A_BOLD, 1)
             g.addstr_rjust(window, 1, "(X: set tx fee, R: new receiving address)", curses.A_BOLD, 1)
-            g.addstr_rjust(window, 2, "(S: send " + unit + ")", curses.A_BOLD, 1)
+            g.addstr_rjust(window, 2, "(S: send " + unit + ", E: export wallet.dat)", curses.A_BOLD, 1)
             draw_addresses(state)
 
     else:
         if rpc_queue.qsize() > 0:
             g.addstr_cjust(win_header, 0, "...waiting for wallet information being processed...", curses.A_BOLD + curses.color_pair(3))
         else:
-            win_header.addstr(0, 1, "no wallet information loaded. -disablewallet, perhaps?", curses.A_BOLD + curses.color_pair(3))
+            win_header.addstr(0, 1, "no wallet information loaded.", curses.A_BOLD + curses.color_pair(3))
             win_header.addstr(1, 1, "press 'W' to refresh", curses.A_BOLD)
 
     win_header.refresh()
@@ -78,8 +80,9 @@ def draw_transactions(state):
     g.viewport_heigth = g.y - 5
     win_transactions = curses.newwin(g.viewport_heigth, g.x, 4, 0)
 
-    win_transactions.addstr(0, 1, str(len(state['wallet']['view_string'])/4) + " transactions:", curses.A_BOLD + curses.color_pair(5))
-    g.addstr_rjust(win_transactions, 0, "(UP/DOWN: scroll, ENTER: view)", curses.A_BOLD + curses.color_pair(5), 1)
+    win_transactions.addstr(0, 1, str(len(state['wallet']['view_string'])/(5 if state['wallet']['verbose'] > 0 else 4)) + " transactions:", curses.A_BOLD + curses.color_pair(5))
+    caption = "(UP/DOWN: scroll, ENTER: view, V: less verbose)" if state['wallet']['verbose'] > 0 else "(UP/DOWN: scroll, ENTER: view, V: verbose)"
+    g.addstr_rjust(win_transactions, 0, caption, curses.A_BOLD + curses.color_pair(5), 1)
     
     offset = state['wallet']['offset']
 
@@ -93,7 +96,7 @@ def draw_transactions(state):
                 else:
                     win_transactions.addstr(index+1-offset, 1, state['wallet']['view_string'][index], curses.color_pair(state['wallet']['view_colorpair'][index]))
 
-                if index == (state['wallet']['cursor']*4 + 1):
+                if index == (state['wallet']['cursor']* (5 if state['wallet']['verbose'] > 0 else 4) + 1):
                     win_transactions.addstr(index+1-offset, 1, ">", curses.A_REVERSE + curses.A_BOLD)
 
     win_transactions.refresh()
@@ -137,10 +140,10 @@ def draw_fee_input_window(state, window, rpc_queue):
             fee_string = "Current transaction fee: " + "%0.8f" % state['walletinfo']['paytxfee'] + " " + unit + " per kB"
             UI.addline(fee_string)
 
-    if 'estimatefee' in state:
+    if 'estimatefee' in state and len(state['estimatefee']):
         string = "Estimatefee: "
         for item in state['estimatefee']:
-            if item['value'] > 0:
+            if item['value'] >= 0:
                 string += "{:0.8f}".format(item['value']) + " " + unit + " per kB (" + str(item['blocks']) + (" blocks) " if int(item['blocks']) > 1 else " block) ")
         UI.addline(string, curses.A_NORMAL)
 
@@ -156,7 +159,7 @@ def draw_fee_input_window(state, window, rpc_queue):
         UI.addmessageline("Setting transaction fee value to " + "{:0.8f}".format(new_fee) + " " + unit + " per kB...", color + curses.A_BOLD)
         rpc_queue.put(s)
     else:
-        UI.addmessageline("No valid fee amount entered", color + curses.A_BOLD)
+        UI.addmessageline("No valid fee amount entered. Aborting.", color + curses.A_BOLD)
         UI.clear()
         state['wallet']['mode'] = 'addresses'
         rpc_queue.put('listsinceblock')
@@ -177,7 +180,7 @@ def draw_new_address_window(state, window, rpc_queue):
         UI.continue_enter()
         state['wallet']['mode'] = 'addresses'
         rpc_queue.put('getwalletinfo')
-        rpc_queue.put('listsinceblock')
+        rpc_queue.put({'listreceivedbyaddress': '0 true'})
         UI.clear()
 
     else:
@@ -194,11 +197,35 @@ def draw_new_address_window(state, window, rpc_queue):
             rpc_queue.put(s)
             UI.addmessageline("Creating new receiving address for account " + "'{}'".format(new_account) + "...", color + curses.A_BOLD)
         else:
-            UI.addmessageline("Aborting", color + curses.A_BOLD)
+            UI.addmessageline("Aborting.", color + curses.A_BOLD)
             state['wallet']['mode'] = 'addresses'
             rpc_queue.put('getwalletinfo')
-            rpc_queue.put('listsinceblock')
+            rpc_queue.put({'listreceivedbyaddress': '0 true'})
             UI.clear()
+
+def draw_backup_wallet_window(state, window, rpc_queue):
+    color = curses.color_pair(1)
+    if g.testnet:
+        color = curses.color_pair(2)
+
+    UI = getstr.UserInput(window, "backup wallet.dat mode")
+
+    UI.addline("Please enter destination file or directory name:", curses.A_BOLD)
+    try:
+        backup = str(UI.getstr(254)).strip()
+    except ValueError:
+        backup = ""
+    
+    state['wallet']['y'] = UI._y + 1
+    if backup != "":
+        rpc_queue.put({'backupwallet': backup })
+        UI.addmessageline("Backing up wallet.dat...", color + curses.A_BOLD)
+    else:
+        UI.addmessageline("Invalid file or directory name. Aborting.", color + curses.A_BOLD)
+        state['wallet']['mode'] = 'tx'
+        rpc_queue.put('getwalletinfo')
+        rpc_queue.put('listsinceblock')
+        UI.clear()
 
 def draw_send_coins_window(state, window, rpc_queue):
     color = curses.color_pair(1)
@@ -299,8 +326,6 @@ def draw_send_coins_window(state, window, rpc_queue):
 
                     if not abort:
 
-                        state['newtransaction']['y'] = UI._y
-
                         if encrypted:
                             if g.y >= 18:
                                 UI.addline()
@@ -313,6 +338,7 @@ def draw_send_coins_window(state, window, rpc_queue):
                             s = {'sendtoaddress': {'address': address, 'amount': str(amount), 'comment': comment, 'comment_to': comment_to}}
                             rpc_queue.put(s)
                             UI.addmessageline("Sending transaction...", color + curses.A_BOLD)
+                        state['wallet']['y'] = UI._y
 
         else:
             err_msg = "Invalid receiving address."
@@ -328,3 +354,21 @@ def draw_send_coins_window(state, window, rpc_queue):
         state['wallet']['mode'] = 'addresses'
         rpc_queue.put('listsinceblock')
 
+def draw_transaction_update(state, window):
+    color = curses.color_pair(1)
+    if g.testnet:
+        color = curses.color_pair(2)
+
+    if 'newtransaction' in state:
+        if 'y' in state['wallet']:
+            y = int(state['wallet']['y'])
+            this_y, this_x = window.getmaxyx()
+            if y >= this_y:
+                y -= 1
+            if 'result' in state['newtransaction']:
+                if len(state['newtransaction']['result']) < 26:
+                    window.addstr(y, 1, "Sending error - transaction failed.".ljust(g.x - 2, " "), color + curses.A_BOLD)
+                else:
+                    window.addstr(y, 1, ("Transaction successful. Tx id: " + state['newtransaction']['result']).ljust(g.x - 2, " "), color + curses.A_BOLD)
+                window.refresh()
+                time.sleep(4)
