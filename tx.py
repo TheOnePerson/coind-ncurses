@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import curses, binascii
+import curses, binascii, time
 
 import global_mod as g
 from getstr import UserInput
@@ -17,34 +17,44 @@ def draw_window(state, window, rpc_queue):
             unit = g.coin_unit_test
     if 'tx' in state:
         win_header.addstr(0, 1, "txid: " + state['tx']['txid'], curses.A_BOLD)
-        win_header.addstr(1, 1, str(state['tx']['size']) + " bytes (" + str(state['tx']['size']/1024) + " KB)       ", curses.A_BOLD)
+        win_header.addstr(1, 1, str(state['tx']['size']) + " bytes (" + "{:.2f}".format(float(state['tx']['size'])/1024.0) + " KB)       ", curses.A_BOLD)
 
         if 'total_outputs' in state['tx']:
             output_string = "%.8f" % state['tx']['total_outputs'] + " " + unit
             if 'total_inputs' in state['tx']:
                 if state['tx']['total_inputs'] == 'coinbase':
-                    fee = 0
+                    fee = 0.0
                     output_string += " (coinbase)"
                 else: # Verbose mode only
                     try:
                         if int(state['tx']['total_inputs']) == 0:
-                            fee = 0
+                            fee = 0.0
                         else:			    
-                            fee = state['tx']['total_inputs'] - state['tx']['total_outputs']
+                            fee = float(state['tx']['total_inputs']) - float(state['tx']['total_outputs'])
                     except:
-                        fee = state['tx']['total_inputs'] - state['tx']['total_outputs']
+                        fee = float(state['tx']['total_inputs']) - float(state['tx']['total_outputs'])
                     output_string += " + " + "%.8f" % fee + " " + unit + " fee"
             else:
                 output_string += " + unknown fee"
             win_header.addstr(1, 26, output_string.rjust(45), curses.A_BOLD)
 
-        if 'confirmations' in state['tx']:
-            win_header.addstr(2, 1, str(state['tx']['confirmations']) + " conf", curses.A_BOLD)
+        if 'time' in state['tx']:
+            output_string = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(state['tx']['time']))
         else:
-            win_header.addstr(2, 1, "unconfirmed", curses.A_BOLD)
+            output_string = ""
+        if 'confirmations' in state['tx']:
+            output_string += ("" if not len(output_string) else " / ") + "{:,d}".format(int(state['tx']['confirmations'])) + " conf"
+        else:
+            output_string += ("" if not len(output_string) else " / ") + "unconfirmed"
+        win_header.addstr(2, 1, output_string[:g.x - 2], curses.A_BOLD)
 
         history_height = 0 if not 'txid_history' in state else len(state['txid_history']) - 1
-        history_msg = "" if history_height <= 0 else ", J: browse back"
+        if history_height <= 0:
+            history_msg = ""
+        else: 
+            if g.x > 79:
+                history_msg = ", J: browse back"
+            else: history_msg = ", J: go back"
         g.addstr_rjust(win_header, 2, "(V: verbose, G: enter txid" + history_msg + ")", curses.A_BOLD, 1)
 
         draw_inputs(state)
@@ -175,6 +185,6 @@ def draw_input_window(state, window, rpc_queue):
         state['mode'] = 'tx'
 
     else:
-        UI.addmessageline("This is no valid txid", color + curses.A_BOLD)
+        UI.addmessageline("This is no valid txid. Aborting.", color + curses.A_BOLD)
         UI.clear()
         state['mode'] = "monitor"

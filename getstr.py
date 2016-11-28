@@ -3,7 +3,7 @@ import global_mod as g
 import curses, time
 import sys
 
-def getstr(w, y, x, password_char=""):
+def getstr(w, y, x, password_char = "", history = []):
     window = curses.newwin(1, w, y, x)
 
     result = ""
@@ -11,6 +11,8 @@ def getstr(w, y, x, password_char=""):
     window.refresh()
     window.keypad(True)
     oldcursor = 0
+    history.append("")
+    history_cursor = len(history) - 1
     global fs_encoding
     try:
         oldcursor = curses.curs_set(1)
@@ -39,6 +41,30 @@ def getstr(w, y, x, password_char=""):
                 window.move(0, len(result)+1)
                 window.delch()
                 result = result[:-1]
+                continue
+
+        elif character == curses.KEY_UP:
+            if history_cursor > 0:
+                len_old = len(result)
+                history_cursor -= 1
+                result = history[history_cursor]
+                if len(result) < len_old:
+                    window.addstr(0, 2, (result).ljust(len_old))
+                else:
+                    window.addstr(0, 2, result)
+                window.move(0, len(result) + 2)
+                continue
+
+        elif character == curses.KEY_DOWN:
+            if history_cursor + 1 < len(history):
+                len_old = len(result)
+                history_cursor += 1
+                result = history[history_cursor]
+                if len(result) < len_old:
+                    window.addstr(0, 2, (result).ljust(len_old))
+                else:
+                    window.addstr(0, 2, result)
+                window.move(0, len(result) + 2)
                 continue
 
         elif (character < 256 and (len(chr(character).strip()) > 0 or character == 32) and len(result) < w-3): # ascii range TODO: unicode

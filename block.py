@@ -22,7 +22,9 @@ def draw_window(state, window, rpc_queue=None):
             win_header.addstr(3, 1, str("{:,d}".format(int(blockdata['size']))) + " bytes (" + str(blockdata['size']/1024) + " KB)       ", curses.A_BOLD)
             g.addstr_cjust(win_header, 3, "Diff: " + "{:,d}".format(int(blockdata['difficulty'])), curses.A_BOLD, 0, 4, 2)
             g.addstr_rjust(win_header, 3, time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(blockdata['time'])), curses.A_BOLD, 1)
-            win_header.addstr(4, 1, "Version: " + str(blockdata['version']) + " (" + "{0:032b}".format(int(blockdata['version'])) + ")", curses.A_BOLD)
+            version_bits = "{0:032b}".format(int(blockdata['version']))
+            version_bits = version_bits[0:7] + " " + version_bits[8:15] + " " + version_bits[16:23] + " " + version_bits[24:]
+            win_header.addstr(4, 1, "Version: " + str(blockdata['version']) + " (" + version_bits + ")", curses.A_BOLD)
 
             draw_transactions(state)
             state['blocks']['loaded'] = 1

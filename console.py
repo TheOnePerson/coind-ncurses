@@ -36,7 +36,7 @@ def draw_buffer(state):
     numlines = len(lines)
 
     offset = state['console']['offset']
-    if offset + 1 >= numlines:
+    if offset + 1 >= numlines and numlines > 0:
         offset = numlines - 2
         state['console']['offset'] = offset
 
@@ -57,8 +57,8 @@ def draw_buffer(state):
                         else:
                             fmt = curses.color_pair(1) + curses.A_BOLD
 
-                if len(line) > state['x']-1:
-                    win_buffer.addstr(window_height-(index-offset)-1, 1, line[:(state['x']-5)] + ' ...', fmt)
+                if len(line) > state['x'] - 1:
+                    win_buffer.addstr(window_height-(index-offset)-1, 1, line[:(state['x']-5)] + '...', fmt)
                 else:
                     win_buffer.addstr(window_height-(index-offset)-1, 1, line, fmt)
         elif index == offset and index: 
@@ -67,7 +67,7 @@ def draw_buffer(state):
     win_buffer.refresh()
 
 def draw_input_box(state, rpc_queue):
-    entered_command = getstr.getstr(state['x'], state['y']-2, 1).strip() # w, y, x
+    entered_command = getstr.getstr(state['x'], state['y']-2, 1, '', state['console']['cbuffer'][0::1]).strip() # w, y, x
 
     if entered_command == "":
         pass

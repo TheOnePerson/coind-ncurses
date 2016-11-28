@@ -383,6 +383,12 @@ def txid(s, state, window, rpc_queue):
     if 'confirmations' in s:
         state['tx']['confirmations'] = s['confirmations']
 
+    if 'time' in s:
+        state['tx']['time'] = s['time']
+
+    if 'blockhash' in s:
+        state['tx']['blockhash'] = s['blockhash']
+
     if state['mode'] == 'tx':
         tx.draw_window(state, window, rpc_queue)
 

@@ -17,7 +17,7 @@ def draw_window(state, window, rpc_queue = None, do_clear = True):
         g.addstr_rjust(win_header, 0, "(UP/DOWN: scroll, P: refresh)", curses.A_BOLD, 1)
         win_header.addstr(2, 1, "  Node IP               Version", curses.A_BOLD + curses.color_pair(5))
         header = "Recv MB Sent MB    Time      Height"
-        win_header.addstr(2, (g.x - len(header) - 1 if g.x <= 95 else 94 - len(header)), header, curses.A_BOLD + curses.color_pair(5))
+        win_header.addstr(2, (g.x - len(header) - 1 if g.x <= 100 else 99 - len(header)), header, curses.A_BOLD + curses.color_pair(5))
         draw_peers(state)
 
     else:
@@ -32,7 +32,7 @@ def draw_window(state, window, rpc_queue = None, do_clear = True):
 
 def draw_peers(state):
     window_height = g.y - 4
-    max_x = 95 if g.x > 95 else g.x
+    max_x = 100 if g.x > 100 else g.x
     win_peers = curses.newwin(window_height, max_x, 3, 0)
 
     offset = state['peerinfo_offset']
@@ -63,7 +63,7 @@ def draw_peers(state):
                 addr_str = (addr_str[:19] + '..') if len(addr_str) > 21 else addr_str
 
                 win_peers.addstr(index-offset, 3, addr_str)
-                win_peers.addstr(index-offset, 25, peer['subver'].strip("/").replace("Satoshi:","Sat")[:16])
+                win_peers.addstr(index-offset, 25, peer['subver'].strip("/").replace("Satoshi:","Sat")[:(max_x - 60)])
 
                 mbrecv = "{: 7.1f}".format(float(peer['bytesrecv']) / 1048576)
                 mbsent = "{: 7.1f}".format(float(peer['bytessent']) / 1048576)
