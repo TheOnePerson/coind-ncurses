@@ -60,7 +60,11 @@ def rpcrequest(rpchandle, request, interface_queue, *args):
         log('debug.log', 2, 'rpcrequest: ' + request + ', args: ' + str(args))
 
         request_time = time.time()
-        response = getattr(rpchandle, request)(*args)
+        try:
+            response = getattr(rpchandle, request)(*args)
+        except:
+            interface_queue.put({ 'stop': ("litecoind" if g.coinmode == 'LTC' else "bitcoind") + " server not reachable"})
+            return False
         request_time_delta = time.time() - request_time
 
         log('debug.log', 3, request + ' done in ' + "%.3f" % request_time_delta + 's')
@@ -240,17 +244,20 @@ def loop(interface_queue, rpc_queue, cfg):
         elif 'getnewaddress' in s:
             rpcrequest(rpchandle, 'getnewaddress', interface_queue, s['getnewaddress'])
             
+        elif 'importaddress' in s:
+            rpcrequest(rpchandle, 'importaddress', interface_queue, s['importaddress']['address'], s['importaddress']['account'], bool(s['importaddress']['rescan']))
+            
         elif 'getwalletinfo' in s:
             rpcrequest(rpchandle, 'getwalletinfo', interface_queue)
 
         elif 'listsinceblock' in s:
-            rpcrequest(rpchandle, 'listsinceblock', interface_queue)
+            rpcrequest(rpchandle, 'listsinceblock', interface_queue, "", 1, True)
 
         elif 'wallet_toggle_tx' in s:
             interface_queue.put(s)
 
         elif 'listreceivedbyaddress' in s:
-            rpcrequest(rpchandle, 'listreceivedbyaddress', interface_queue, 0, True)
+            rpcrequest(rpchandle, 'listreceivedbyaddress', interface_queue, 0, True, True)
 
         elif 'getchaintips' in s:
             rpcrequest(rpchandle, 'getchaintips', interface_queue)
@@ -294,7 +301,7 @@ def loop(interface_queue, rpc_queue, cfg):
             rpcrequest(rpchandle, 'getnettotals', interface_queue)
             rpcrequest(rpchandle, 'getconnectioncount', interface_queue)
             mininginfo = rpcrequest(rpchandle, 'getmininginfo', interface_queue)
-            rpcrequest(rpchandle, 'getbalance', interface_queue)
+            rpcrequest(rpchandle, 'getbalance', interface_queue, "*", 1, True)
             rpcrequest(rpchandle, 'getunconfirmedbalance', interface_queue)
 
             blockcount = mininginfo['blocks']

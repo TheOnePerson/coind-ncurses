@@ -49,7 +49,7 @@ def draw_window(state, window, rpc_queue=None, do_clear = True):
 
         if state['wallet']['mode'] == 'tx':
             g.addstr_rjust(window, 0, "(W: refresh, A: list addresses)", curses.A_BOLD, 1)
-            g.addstr_rjust(window, 1, "(X: set tx fee, R: new receiving address)", curses.A_BOLD, 1)
+            g.addstr_rjust(window, 1, "(X: set tx fee, R: new address)", curses.A_BOLD, 1)
             g.addstr_rjust(window, 2, "(S: send " + unit + ", E: export wallet.dat)", curses.A_BOLD, 1)
             draw_transactions(state)
         elif state['wallet']['mode'] == 'settxfee':
@@ -62,7 +62,7 @@ def draw_window(state, window, rpc_queue=None, do_clear = True):
             draw_backup_wallet_window(state, window, rpc_queue)
         else:
             g.addstr_rjust(window, 0, "(A: refresh, W: list tx)", curses.A_BOLD, 1)
-            g.addstr_rjust(window, 1, "(X: set tx fee, R: new receiving address)", curses.A_BOLD, 1)
+            g.addstr_rjust(window, 1, "(X: set tx fee, R: new address)", curses.A_BOLD, 1)
             g.addstr_rjust(window, 2, "(S: send " + unit + ", E: export wallet.dat)", curses.A_BOLD, 1)
             draw_addresses(state)
 
@@ -171,37 +171,81 @@ def draw_new_address_window(state, window, rpc_queue):
 
     UI = getstr.UserInput(window, "new receiving address mode")
 
-    if 'newaddress' in state['wallet']:
-        if 'newlabel' in state['wallet']:
-            UI.addline("New receiving address created!", curses.A_BOLD)
-            UI.addline("Label: " + state['wallet']['newlabel'], curses.A_NORMAL)
-        UI.addline("Address: " + state['wallet']['newaddress'], curses.A_BOLD)
-        UI.addline()
-        UI.continue_enter()
-        state['wallet']['mode'] = 'addresses'
-        rpc_queue.put('getwalletinfo')
-        rpc_queue.put({'listreceivedbyaddress': '0 true'})
-        UI.clear()
-
-    else:
-
-        UI.addline("Please enter address label:", curses.A_BOLD)
-        try:
-            new_account = str(UI.getstr(64)).strip()
-        except ValueError:
-            new_account = ""
+    abort = False
+    error_string = ""
+    UI.addline("Please enter an address label (optional):", curses.A_BOLD)
+    try:
+        new_account = str(UI.getstr(128)).strip()
+    except:
+        abort = True
     
-        if new_account != "":
-            s = {'getnewaddress': new_account }
+    if not abort:
+        UI.addline("Do you want to add a [r]eceiving or a [w]atch-only address? [r/w]", curses.A_BOLD)
+        try:
+            new_type = str(UI.getstr(1))
+        except:
+            error_string = "Invalid address type entered. "
+            abort = True
+
+        if new_type == 'r':
+            state['wallet']['y'] = UI._y + 2
             state['wallet']['newlabel'] = new_account
-            rpc_queue.put(s)
-            UI.addmessageline("Creating new receiving address for account " + "'{}'".format(new_account) + "...", color + curses.A_BOLD)
+            rpc_queue.put({'getnewaddress': new_account})
+            UI.addmessageline("Creating new receiving address" + (" for account " + "'{}'".format(new_account) if len(new_account) else "") + "...", 
+                                color + curses.A_BOLD)
+        elif new_type == 'w':
+            UI.addline("Please enter watch-only address:", curses.A_BOLD)
+            new_address = ""
+            try:
+                new_address = UI.getstr(35).strip()
+            except:
+                abort = True
+            if not check_address(new_address):
+                error_string = "Invalid address entered. "
+                abort = True
+            if not abort:
+                UI.addline("Do you want to rescan the entire blockchain for matching transactions? [y/N]", curses.A_BOLD)
+                try:
+                    new_rescan = str(UI.getstr(1))
+                except:
+                    abort = True
+                if new_rescan in ['y', 'Y']:
+                    new_rescan = True
+                elif new_rescan in ['n', 'N']:
+                    new_rescan = False
+                else:
+                    abort = True
+
+                if not abort:
+                    state['wallet']['newlabel'] = new_account
+                    state['wallet']['newaddress'] = new_address
+                    s = {'importaddress': {'account': new_account, 'address': new_address, 'rescan': bool(new_rescan)}}
+                    rpc_queue.put(s)
+                    UI.addmessageline("Importing watch-only address" + (" for account " + "'{}'".format(new_account) if len(new_account) else "") + "...", 
+                                        color + curses.A_BOLD)
         else:
-            UI.addmessageline("Aborting.", color + curses.A_BOLD)
-            state['wallet']['mode'] = 'addresses'
-            rpc_queue.put('getwalletinfo')
-            rpc_queue.put({'listreceivedbyaddress': '0 true'})
-            UI.clear()
+            abort = True
+
+    if abort:
+        UI.addmessageline(error_string + "Aborting.", color + curses.A_BOLD)
+        state['wallet']['mode'] = 'addresses'
+        rpc_queue.put('listreceivedbyaddress')
+        UI.clear()
+        footer.draw_window(state, rpc_queue, True)
+
+def draw_new_address_update(state, window):
+    color = curses.color_pair(1)
+    if g.testnet:
+        color = curses.color_pair(2)
+
+    if 'newaddress' in state['wallet'] and 'y' in state['wallet']:
+        y = int(state['wallet']['y'])
+        this_y, this_x = window.getmaxyx()
+        if y >= this_y:
+            y -= 1
+        window.addstr(y, 1, "Address successfully added: " + state['wallet']['newaddress'], color + curses.A_BOLD)
+        window.refresh()
+        time.sleep(4)
 
 def draw_backup_wallet_window(state, window, rpc_queue):
     color = curses.color_pair(1)
@@ -277,7 +321,7 @@ def draw_send_coins_window(state, window, rpc_queue):
         except:
             abort = True
 
-        if len(address) >= 26 and len(address) <= 35 and ((not g.testnet and (address.startswith('1') or address.startswith('3'))) or (g.testnet and (address.startswith('m') or address.startswith('n') or address.startswith('2')))) and not abort:
+        if check_address(address) and not abort:
 
             state['newtransaction']['address'] = address
             
@@ -372,3 +416,6 @@ def draw_transaction_update(state, window):
                     window.addstr(y, 1, ("Transaction successful. Tx id: " + state['newtransaction']['result']).ljust(g.x - 2, " "), color + curses.A_BOLD)
                 window.refresh()
                 time.sleep(4)
+
+def check_address(address):
+    return bool(len(address) >= 26 and len(address) <= 35 and ((not g.testnet and (address.startswith('1') or address.startswith('3'))) or (g.testnet and (address.startswith('m') or address.startswith('n') or address.startswith('2')))))

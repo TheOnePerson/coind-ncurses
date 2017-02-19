@@ -155,8 +155,17 @@ def getnewaddress(s, state, window, rpc_queue):
     if state['mode'] == "wallet":
         if 'wallet' in state:
             state['wallet']['newaddress'] = str(s['getnewaddress'])
-            state['wallet']['mode'] = 'newaddress'
-        wallet.draw_window(state, window, rpc_queue)
+            wallet.draw_new_address_update(state, window)
+            state['wallet']['mode'] = 'addresses'
+            rpc_queue.put('listreceivedbyaddress')
+            wallet.draw_window(state, window, rpc_queue)
+
+def importaddress(s, state, window, rpc_queue):
+    if state['mode'] == "wallet":
+        if 'wallet' in state:
+            state['wallet']['mode'] = 'addresses'
+            rpc_queue.put('listreceivedbyaddress')
+            wallet.draw_window(state, window, rpc_queue)
 
 def backupwallet(s, state, window, rpc_queue):
     if state['mode'] == "wallet":
@@ -233,25 +242,29 @@ def listsinceblock(s, state, window, rpc_queue, reload = True):
             else:
                 state['wallet']['view_colorpair'].append(1)
 
+            is_watchonly = True if 'involvesWatchonly' in entry else False
+            color = 2 if is_watchonly else 0
             output_string = entry['txid'].rjust(74)
             state['wallet']['view_string'].append(output_string)
-            state['wallet']['view_colorpair'].append(0)
+            state['wallet']['view_colorpair'].append(color)
 
             if 'address' in entry: # TODO: more sanity checking here
-                output_string = indent + entry['category'].ljust(15) + entry['address']
+                output_string = indent + entry['category'].ljust(15) + entry['address'].ljust(34)
             else:
                 output_string = indent + "unknown transaction type"
+            if is_watchonly:
+                output_string += "(watchonly)".rjust(15)
             state['wallet']['view_string'].append(output_string)
-            state['wallet']['view_colorpair'].append(0)
+            state['wallet']['view_colorpair'].append(color)
 
             if state['wallet']['verbose'] > 0:
                 if 'comment' in entry and 'to' in entry:
                     output_string = indent + unidecode(entry['comment'][:comment_maxlen].ljust(comment_maxlen)) + comment_split + unidecode(entry['to'][:comment_maxlen])
                     state['wallet']['view_string'].append(output_string)
-                    state['wallet']['view_colorpair'].append(0)
+                    state['wallet']['view_colorpair'].append(color)
                 else:
                     state['wallet']['view_string'].append("")
-                    state['wallet']['view_colorpair'].append(0)
+                    state['wallet']['view_colorpair'].append(color)
 
             state['wallet']['view_string'].append("")
             state['wallet']['view_colorpair'].append(0)
@@ -296,7 +309,11 @@ def listreceivedbyaddress(s, state, window, rpc_queue):
                 color = 3
             else:
                 color = 0
-            output_string = entry['address'] + str("% 17.8f " % amount + unit).rjust(39)
+            if 'involvesWatchonly' in entry:
+                color = 2
+                output_string = entry['address'] + " (watchonly)" + str("% 17.8f " % amount + unit).rjust(27)
+            else:
+                output_string = entry['address'] + str("% 17.8f " % amount + unit).rjust(39)
             state['wallet']['addresses_view_string'].append(output_string)
             state['wallet']['addresses_view_colorpair'].append(color)
             
@@ -424,6 +441,7 @@ def queue(state, window, interface_queue, rpc_queue=None):
         elif 'settxfee' in s: settxfee(s, state, window, rpc_queue)
         elif 'backupwallet' in s: backupwallet(s, state, window, rpc_queue)
         elif 'getnewaddress' in s: getnewaddress(s, state, window, rpc_queue)
+        elif 'importaddress' in s: importaddress(s, state, window, rpc_queue)
         elif 'getchaintips' in s: getchaintips(s, state, window, rpc_queue)
         elif 'listsinceblock' in s: listsinceblock(s, state, window, rpc_queue)
         elif 'wallet_toggle_tx' in s: wallet_toggle_tx(s, state, window, rpc_queue)

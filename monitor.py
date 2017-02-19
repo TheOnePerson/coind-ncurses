@@ -124,7 +124,7 @@ def draw_window(state, old_window, rpc_queue, do_clear = True):
                 try:
                     window.addstr(10 + padline[0] + padline[1] + padline[2] + padline[3], 1, "Chain work: 2**" + "%0.6f" % log2_chainwork)
                 except:
-                    print(log2_chainwork)
+                    pass
 
         diff = int(state['mininginfo']['difficulty'])
         window.addstr(7 + padline[0] + padline[1] + padline[2], 1, "Diff:        " + "{:,d}".format(diff))

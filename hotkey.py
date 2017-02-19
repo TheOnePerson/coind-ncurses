@@ -65,9 +65,8 @@ def key_a(state, window, rpc_queue):
     if state['mode'] == 'wallet':
         if 'wallet' in state:
             state['wallet']['mode'] = 'addresses'
-            s = {'listreceivedbyaddress': '0 true'}
             rpc_queue.put('getwalletinfo')
-            rpc_queue.put(s)
+            rpc_queue.put('listreceivedbyaddress')
             wallet.draw_window(state, window, rpc_queue)
 
 def key_e(state, window, rpc_queue):

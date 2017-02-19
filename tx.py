@@ -23,12 +23,12 @@ def draw_window(state, window, rpc_queue):
             output_string = "%.8f" % state['tx']['total_outputs'] + " " + unit
             if 'total_inputs' in state['tx']:
                 if state['tx']['total_inputs'] == 'coinbase':
-                    fee = 0.0
+                    fee = float(0)
                     output_string += " (coinbase)"
                 else: # Verbose mode only
                     try:
-                        if int(state['tx']['total_inputs']) == 0:
-                            fee = 0.0
+                        if float(state['tx']['total_inputs']) == 0:
+                            fee = float(0)
                         else:			    
                             fee = float(state['tx']['total_inputs']) - float(state['tx']['total_outputs'])
                     except:
