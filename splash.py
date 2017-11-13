@@ -3,7 +3,7 @@ import curses
 import global_mod as g
 
 def get_splash_array():
-    if g.coinmode == 'BTC':
+    if g.coinmode in ('BTC', 'BCH'):
         global splash_array
         splash_array = [
             "  BB            BB                                   BB",
