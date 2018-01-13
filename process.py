@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-import Queue, textwrap, time
+import textwrap, time
+from multiprocessing import Queue
 from unidecode import unidecode
 
 import global_mod as g

@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 from anycoinrpc.authproxy import AuthServiceProxy
 import global_mod as g
-import curses, time, Queue, decimal
+import curses, time, decimal
+from multiprocessing import Queue
 import sys, os
 
 def log(logfile, loglevel, string):

@@ -38,7 +38,7 @@ if __name__ == '__main__':
                         help="path to config file (i.e. bitcoin.conf|litecoin.conf)",
                         default="bitcoin.conf")
     parser.add_argument("-m", "--mode",
-                        help="coin mode, either BTC or LTC",
+                        help="coin mode, either BTC, BCH, BTG or LTC",
                         default="BTC")
     args = parser.parse_args()
 
