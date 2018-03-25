@@ -423,7 +423,10 @@ def check_address(address):
 		return bool(len(address) >= 26 and len(address) <= 35 and ((not g.testnet and (address.startswith('L') or address.startswith('3') or address.startswith('M'))) or (g.testnet and (address.startswith('m') or address.startswith('n') or address.startswith('2')))))
 	elif g.coinmode == 'BCH':
 		# Addresses for bitcoin cash:
-		return bool(len(address) >= 26 and len(address) <= 35 and ((not g.testnet and (address.startswith('1') or address.startswith('3'))) or (g.testnet and (address.startswith('m') or address.startswith('n') or address.startswith('2')))))
+		return bool(len(address) >= 26 and len(address) <= 54 and ((not g.testnet and (address.startswith('1') or address.startswith('3') or address.startswith('q') or address.startswith('bitcoincash:q'))) or (g.testnet and (address.startswith('m') or address.startswith('n') or address.startswith('2') or address.startswith('bchtest:')))))
+	elif g.coinmode == 'BTG':
+		# Addresses for bitcoin gold:
+		return bool(len(address) >= 26 and len(address) <= 35 and ((not g.testnet and (address.startswith('G'))) or (g.testnet and (address.startswith('m') or address.startswith('n') or address.startswith('2')))))
 	else:
 		# Addresses for bitcoin:
-		return bool(len(address) >= 26 and len(address) <= 35 and ((not g.testnet and (address.startswith('1') or address.startswith('3'))) or (g.testnet and (address.startswith('m') or address.startswith('n') or address.startswith('2')))))
+		return bool(len(address) >= 26 and len(address) <= 62 and ((not g.testnet and (address.startswith('1') or address.startswith('3') or address.startswith('bc1q'))) or (g.testnet and (address.startswith('m') or address.startswith('n') or address.startswith('2') or address.startswith('tb1q')))))

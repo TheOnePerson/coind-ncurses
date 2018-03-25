@@ -12,9 +12,8 @@ def draw_window(state, window, rpc_queue):
     win_header = curses.newwin(3, g.x, 0, 0)
 
     unit = g.coin_unit
-    if 'testnet' in state:
-        if state['testnet']:
-            unit = g.coin_unit_test
+    if g.testnet:
+        unit = g.coin_unit_test
     if 'tx' in state:
         win_header.addstr(0, 1, "txid: " + state['tx']['txid'], curses.A_BOLD)
         win_header.addstr(1, 1, str(state['tx']['size']) + " bytes (" + "{:.2f}".format(float(state['tx']['size'])/1024.0) + " KB)       ", curses.A_BOLD)
