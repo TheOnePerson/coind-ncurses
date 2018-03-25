@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import textwrap, time
 from multiprocessing import Queue
+from Queue import Empty
 from unidecode import unidecode
 
 import global_mod as g
@@ -32,23 +33,11 @@ def resize(s, state, window, rpc_queue):
     elif state['mode'] == 'forks':
         forks.draw_window(state, window, rpc_queue)
 
-def getinfo(s, state, window, rpc_queue):
-    state['version'] = str(s['getinfo']['version'] / 1000000)
-    state['version'] += '.' + str((s['getinfo']['version'] % 1000000) / 10000)
-    state['version'] += '.' + str((s['getinfo']['version'] % 10000) / 100)
-    state['version'] += '.' + str((s['getinfo']['version'] % 100))
-    if 'walletversion' in s['getinfo']:
-        g.wallet_support = True
-    else:
-        g.wallet_support = False
-        if 'wallet' in g.modes:
-            g.modes.remove('wallet')
-    if s['getinfo']['testnet'] == True:
-        state['testnet'] = 1
-        g.testnet = True
-    else:
-        state['testnet'] = 0
-        g.testnet = False
+def getnetworkinfo(s, state, window, rpc_queue):
+    state['version'] = str(s['getnetworkinfo']['version'] / 1000000)
+    state['version'] += '.' + str((s['getnetworkinfo']['version'] % 1000000) / 10000)
+    state['version'] += '.' + str((s['getnetworkinfo']['version'] % 10000) / 100)
+    state['version'] += '.' + str((s['getnetworkinfo']['version'] % 100))
 
     if state['mode'] == "splash":
         splash.draw_window(state, window, rpc_queue)
@@ -113,6 +102,14 @@ def getmininginfo(s, state, window):
 
     state['networkhashps']['diff'] = (int(s['getmininginfo']['difficulty'])*2**32)/600
 
+    if s['getmininginfo']['chain'] != 'main':
+        state['testnet'] = 1
+        g.testnet = True
+    else:
+        state['testnet'] = 0
+        g.testnet = False
+
+
 def getpeerinfo(s, state, window, rpc_queue):
     state['peerinfo'] = s['getpeerinfo']
     state['peerinfo_offset'] = 0
@@ -127,6 +124,13 @@ def getchaintips(s, state, window, rpc_queue):
 
 def getwalletinfo(s, state, window, rpc_queue):
     state['walletinfo'] = s['getwalletinfo']
+    if 'walletversion' in s['getwalletinfo']:
+        g.wallet_support = True
+    else:
+        g.wallet_support = False
+        if 'wallet' in g.modes:
+            g.modes.remove('wallet')
+
     if state['mode'] == "wallet":
         wallet.draw_window(state, window, rpc_queue)
 
@@ -424,11 +428,11 @@ def queue(state, window, interface_queue, rpc_queue=None):
     while True:
         try:
             s = interface_queue.get(False)
-        except Queue.Empty:
+        except Empty:
             return False
 
         if 'resize' in s: resize(s, state, window, rpc_queue)
-        elif 'getinfo' in s: getinfo(s, state, window, rpc_queue)
+        elif 'getnetworkinfo' in s: getnetworkinfo(s, state, window, rpc_queue)
         elif 'getconnectioncount' in s: getconnectioncount(s, state, window)
         elif 'getbalance' in s: getbalance(s, state, window)
         elif 'getunconfirmedbalance' in s: getunconfirmedbalance(s, state, window)

@@ -3,6 +3,7 @@ from anycoinrpc.authproxy import AuthServiceProxy
 import global_mod as g
 import curses, time, decimal
 from multiprocessing import Queue
+from Queue import Empty
 import sys, os
 
 def log(logfile, loglevel, string):
@@ -64,7 +65,7 @@ def rpcrequest(rpchandle, request, interface_queue, *args):
         try:
             response = getattr(rpchandle, request)(*args)
         except:
-            interface_queue.put({ 'stop': ("litecoind" if g.coinmode == 'LTC' else "bitcoind") + " server not reachable"})
+            interface_queue.put({ 'stop': g.rpc_deamon + " server not reachable"})
             return False
         request_time_delta = time.time() - request_time
 
@@ -120,9 +121,9 @@ def loop(interface_queue, rpc_queue, cfg):
 
     last_update = time.time() - update_interval
     
-    info = rpcrequest(rpchandle, 'getinfo', interface_queue)
+    info = rpcrequest(rpchandle, 'getnetworkinfo', interface_queue)
     if not info:
-        stop(interface_queue, "failed to connect to " + g.rpc_deamon + " (getinfo failed)")
+        stop(interface_queue, "failed to connect to " + g.rpc_deamon + " (getnetworkinfo failed)")
         return True
 
     log('debug.log', 1, 'CONNECTED')
@@ -131,7 +132,7 @@ def loop(interface_queue, rpc_queue, cfg):
     while True:
         try:
             s = rpc_queue.get(True, 0.1)
-        except Queue.Empty:
+        except Empty:
             s = {}
 
         if len(s):
