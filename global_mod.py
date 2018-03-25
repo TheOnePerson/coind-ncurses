@@ -78,7 +78,7 @@ def init_coinmode():
 		coin_unit_test = 'TTG'
 		coin_name = 'Bitcoin Gold'
 		coin_smallname = 'bitcoingold'
-		rpc_deamon = 'bitcoind'
+		rpc_deamon = 'bgoldd'
 		rpc_port = '8332'
 		rpc_port_test = '18332'
 		node_port = '8333'
