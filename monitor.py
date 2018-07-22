@@ -185,7 +185,10 @@ def draw_window(state, old_window, rpc_queue, do_clear = True):
             g.addstr_rjust(window, 11 + padline[0] + padline[1] + padline[2] + padline[3], string, curses.A_NORMAL, 1)
 
     if 'mininginfo' in state:
-        errors = state['mininginfo']['errors']
+        if 'errors' in state['mininginfo']:
+            errors = state['mininginfo']['errors']
+        else:
+            errors = state['mininginfo']['warnings']
         if len(errors):
             try:
                 y = this_y-1
