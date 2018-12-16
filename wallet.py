@@ -41,7 +41,10 @@ def draw_window(state, window, rpc_queue=None, do_clear = True):
 					fee_string += 'locked'
 					window.addstr(2, 1, fee_string, curses.A_BOLD)
 				else:
-					fee_string += 'unlocked until ' + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(state['walletinfo']['unlocked_until']))
+					try:
+						fee_string += 'unlocked until ' + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(state['walletinfo']['unlocked_until']))
+					except ValueError:
+						fee_string += 'unlocked!!! (' + str(state['walletinfo']['unlocked_until'])+ ')'
 					window.addstr(2, 1, fee_string, curses.A_BOLD + curses.A_REVERSE)
 			else:
 				fee_string += 'not encrypted!'
@@ -317,7 +320,7 @@ def draw_send_coins_window(state, window, rpc_queue):
 
 		UI.addline("Please enter receiving address:", curses.A_BOLD)
 		try:
-			address = UI.getstr(35).strip()
+			address = UI.getstr(54).strip()
 		except:
 			abort = True
 
@@ -424,9 +427,12 @@ def check_address(address):
 	elif g.coinmode == 'BCH':
 		# Addresses for bitcoin cash:
 		return bool(len(address) >= 26 and len(address) <= 54 and ((not g.testnet and (address.startswith('1') or address.startswith('3') or address.startswith('q') or address.startswith('bitcoincash:q'))) or (g.testnet and (address.startswith('m') or address.startswith('n') or address.startswith('2') or address.startswith('bchtest:')))))
+	elif g.coinmode == 'BSV':
+		# Addresses for bitcoin cash sv:
+		return bool(len(address) >= 26 and len(address) <= 54 and ((not g.testnet and (address.startswith('1') or address.startswith('3') or address.startswith('q') or address.startswith('bitcoincash:q'))) or (g.testnet and (address.startswith('m') or address.startswith('n') or address.startswith('2') or address.startswith('bchtest:')))))
 	elif g.coinmode == 'BTG':
 		# Addresses for bitcoin gold:
 		return bool(len(address) >= 26 and len(address) <= 35 and ((not g.testnet and (address.startswith('G'))) or (g.testnet and (address.startswith('m') or address.startswith('n') or address.startswith('2')))))
 	else:
 		# Addresses for bitcoin:
-		return bool(len(address) >= 26 and len(address) <= 62 and ((not g.testnet and (address.startswith('1') or address.startswith('3') or address.startswith('bc1q'))) or (g.testnet and (address.startswith('m') or address.startswith('n') or address.startswith('2') or address.startswith('tb1q')))))
+		return bool(len(address) >= 26 and len(address) <= 35 and ((not g.testnet and (address.startswith('1') or address.startswith('3'))) or (g.testnet and (address.startswith('m') or address.startswith('n') or address.startswith('2')))))

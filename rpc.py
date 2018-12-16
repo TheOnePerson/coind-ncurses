@@ -343,8 +343,14 @@ def loop(interface_queue, rpc_queue, cfg):
 
                     try:
                         estimatefee1 = rpcrequest(rpchandle, 'estimatefee', False, 1)
-                        estimatefee5 = rpcrequest(rpchandle, 'estimatefee', False, 5)
-                        estimatefee = [{'blocks': 1, 'value': estimatefee1}, {'blocks': 5, 'value': estimatefee5}]
+		        # Handle *coin clients version 0.16.x and above: use 'estimatesmartfee' instead of 'estimatefee'
+		        if not isinstance(estimatefee1, int) and not isinstance(estimatefee1, float):
+		    	    estimatefee1 = rpcrequest(rpchandle, 'estimatesmartfee', False, 1)
+		    	    estimatefee5 = rpcrequest(rpchandle, 'estimatesmartfee', False, 5)
+		    	    estimatefee = [{'blocks': 1, 'value': estimatefee1['feerate']}, {'blocks': 5, 'value': estimatefee5['feerate']}]
+		        else:
+	                    estimatefee5 = rpcrequest(rpchandle, 'estimatefee', False, 5)
+        	            estimatefee = [{'blocks': 1, 'value': estimatefee1}, {'blocks': 5, 'value': estimatefee5}]
                         interface_queue.put({'estimatefee': estimatefee})
                     except: pass
 
