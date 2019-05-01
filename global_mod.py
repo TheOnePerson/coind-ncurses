@@ -2,8 +2,8 @@
 
 from curses import A_NORMAL
 
-version = "v0.0.28"
-modes = ['monitor', 'wallet', 'peers', 'block', 'tx', 'console', 'net', 'forks', 'quit']
+version = "v0.0.29"
+modes = ['home', 'wallet', 'peers', 'mempool', 'block', 'tx', 'console', 'net', 'forks', 'quit']
 
 # the following line just declares the default coinmode. Will be overwritten by main.py if user has provided another value as argument
 coinmode = None

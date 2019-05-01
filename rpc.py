@@ -252,6 +252,9 @@ def loop(interface_queue, rpc_queue, cfg):
         elif 'getwalletinfo' in s:
             rpcrequest(rpchandle, 'getwalletinfo', interface_queue)
 
+        elif 'getrawmempool' in s:
+            rpcrequest(rpchandle, 'getrawmempool', interface_queue)
+
         elif 'listsinceblock' in s:
             rpcrequest(rpchandle, 'listsinceblock', interface_queue, "", 1, True)
 

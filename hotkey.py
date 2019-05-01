@@ -4,6 +4,7 @@ import curses
 import global_mod as g
 import tx
 import block
+import mempool
 import monitor
 import peers
 import wallet
@@ -20,7 +21,7 @@ def change_mode(state, window, mode, rpc_queue=None):
 
     state['mode'] = mode
 
-    if mode == 'monitor':
+    if mode == 'home':
         monitor.draw_window(state, window, rpc_queue)
     elif mode == 'tx':
         tx.draw_window(state, window, rpc_queue)
@@ -28,6 +29,8 @@ def change_mode(state, window, mode, rpc_queue=None):
         peers.draw_window(state, window, rpc_queue)
     elif mode == 'wallet':
         wallet.draw_window(state, window, rpc_queue)
+    elif mode == 'mempool':
+        mempool.draw_window(state, window, rpc_queue)
     elif mode == 'block':
         block.draw_window(state, window, rpc_queue)
     elif mode == 'console':
@@ -84,6 +87,10 @@ def key_e(state, window, rpc_queue):
 def key_p(state, window, rpc_queue):
     rpc_queue.put('getpeerinfo')
     change_mode(state, window, 'peers', rpc_queue)
+
+def key_m(state, window, rpc_queue):
+    rpc_queue.put('getrawmempool')
+    change_mode(state, window, 'mempool', rpc_queue)
 
 def key_f(state, window, rpc_queue):
     rpc_queue.put('getchaintips')
@@ -143,6 +150,17 @@ def scroll_down(state, window, rpc_queue):
             elif state['tx']['out_offset'] < (len(state['tx']['vout_string']) - (window_height-1)) and state['tx']['mode'] == 'outputs':
                 state['tx']['out_offset'] += 1
                 tx.draw_outputs(state)
+
+    elif state['mode'] == "mempool":
+        if 'mempool' in state:
+            if 'transactions' in state['mempool']:
+                txdata = state['mempool']['transactions']
+                if state['mempool']['cursor'] < (len(txdata) - 1):
+                    state['mempool']['cursor'] += 1
+                    window_height = g.viewport_height
+                    if (state['mempool']['cursor'] - state['mempool']['offset']) > window_height - 2:
+                        state['mempool']['offset'] += 1
+                    mempool.draw_transactions(state)
 
     elif state['mode'] == "block":
         if 'blocks' in state:
@@ -210,6 +228,14 @@ def scroll_up(state, window, rpc_queue):
                 state['tx']['out_offset'] -= 1
                 tx.draw_outputs(state)
 
+    elif state['mode'] == "mempool":
+        if 'mempool' in state:
+            if state['mempool']['cursor'] > 0:
+                if (state['mempool']['cursor'] - state['mempool']['offset']) == 0:
+                    state['mempool']['offset'] -= 1
+                state['mempool']['cursor'] -= 1
+                mempool.draw_transactions(state)
+
     elif state['mode'] == "block":
         if 'blocks' in state:
             if state['blocks']['cursor'] > 0:
@@ -268,6 +294,20 @@ def scroll_up_page(state, window, rpc_queue):
                 state['blocks']['offset'] = 0
             block.draw_transactions(state)
 
+    elif state['mode'] == "mempool":
+        if 'mempool' in state:
+            window_height = state['y'] - 2
+            if state['mempool']['cursor'] >= window_height - 2:
+                if state['mempool']['offset'] >= window_height - 2:
+                    state['mempool']['offset'] -= window_height - 2
+                else:
+                    state['mempool']['offset'] = 0
+                state['mempool']['cursor'] -= window_height - 2
+            else:
+                state['mempool']['cursor'] = 0
+                state['mempool']['offset'] = 0
+            mempool.draw_transactions(state)
+
 def scroll_down_page(state, window, rpc_queue):
     if state['mode'] == "console":
         window_height = state['y'] - 3 - 2
@@ -285,9 +325,24 @@ def scroll_down_page(state, window, rpc_queue):
                 window_height = g.viewport_height
                 if state['blocks']['cursor'] < (len(blockdata['tx']) - window_height - 3):
                     state['blocks']['cursor'] += window_height - 3
-                    if (state['blocks']['offset'] < (len(blockdata['tx']) - window_height - 3)):
-                        state['blocks']['offset'] += window_height - 3
+                else:
+                    state['blocks']['cursor'] = len(blockdata['tx']) - 1
+                if (state['blocks']['offset'] < (len(blockdata['tx']) - window_height - 3)):
+                    state['blocks']['offset'] += window_height - 3
                 block.draw_transactions(state)
+
+    elif state['mode'] == "mempool":
+        if 'mempool' in state:
+            if 'transactions' in state['mempool']:
+                txdata = state['mempool']['transactions']
+                window_height = g.viewport_height
+                if state['mempool']['cursor'] < (len(txdata) - window_height - 3):
+                    state['mempool']['cursor'] += window_height - 3
+                else:
+                    state['mempool']['cursor'] = len(txdata) - 1
+                if (state['mempool']['offset'] < (len(txdata) - window_height - 3)):
+                    state['mempool']['offset'] += window_height - 3
+                mempool.draw_transactions(state)
 
 def toggle_submode(state, window, rpc_queue):
     if state['mode'] == 'tx':
@@ -309,6 +364,14 @@ def load_transaction(state, window, rpc_queue):
                     s = {'txid': state['tx']['vin'][ state['tx']['cursor'] ]['txid']}
                     rpc_queue.put(s)
                     footer.draw_window(state, rpc_queue)
+
+    elif state['mode'] == "mempool":
+        if 'mempool' in state:
+            if 'transactions' in state['mempool']:
+                s = {'txid': state['mempool']['transactions'][ int(state['mempool']['cursor']) ]}
+                rpc_queue.put(s)
+                state['mode'] = 'tx'
+                change_mode(state, window, state['mode'], rpc_queue)
 
     elif state['mode'] == "block":
         if 'blocks' in state:
@@ -449,6 +512,9 @@ keymap = {
     ord('x'): key_x,
     ord('X'): key_x,
 
+    ord('m'): key_m,
+    ord('M'): key_m,
+
     ord('p'): key_p,
     ord('P'): key_p,
 
@@ -481,8 +547,8 @@ keymap = {
 }
 
 modemap = {
-    ord('m'): 'monitor',
-    ord('M'): 'monitor',
+    ord('h'): 'home',
+    ord('H'): 'home',
 
     ord('b'): 'block',
     ord('B'): 'block',

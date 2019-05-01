@@ -7,6 +7,7 @@ from unidecode import unidecode
 import global_mod as g
 import tx
 import block
+import mempool
 import monitor
 import peers
 import wallet
@@ -20,11 +21,13 @@ def resize(s, state, window, rpc_queue):
         tx.draw_window(state, window, rpc_queue)
     elif state['mode'] == 'block':
         block.draw_window(state, window, rpc_queue)
+    elif state['mode'] == 'mempool':
+        mempool.draw_window(state, window, rpc_queue)
     elif state['mode'] == 'peers':
         peers.draw_window(state, window, rpc_queue)
     elif state['mode'] == 'wallet':
         wallet.draw_window(state, window, rpc_queue)
-    elif state['mode'] == 'monitor':
+    elif state['mode'] == 'home':
         monitor.draw_window(state, window, rpc_queue)
     elif state['mode'] == 'console':
         console.draw_window(state, window, rpc_queue)
@@ -66,6 +69,16 @@ def getblock(s, state, window, rpc_queue=None):
             state['blocks']['offset'] = 0
             state['blocks']['cursor'] = 0
             block.draw_window(state, window, rpc_queue)
+
+def getrawmempool(s, state, window, rpc_queue = None):
+    state['mempool'] = {}
+    state['mempool']['transactions'] = s['getrawmempool']
+    state['mempool']['num_transactions'] = str(len(s['getrawmempool']))
+
+    if state['mode'] == "mempool":
+        state['mempool']['offset'] = 0
+        state['mempool']['cursor'] = 0
+        mempool.draw_window(state, window, rpc_queue)
 
 def coinbase(s, state, window):
     height = str(s['height'])
@@ -437,6 +450,7 @@ def queue(state, window, interface_queue, rpc_queue=None):
         elif 'getbalance' in s: getbalance(s, state, window)
         elif 'getunconfirmedbalance' in s: getunconfirmedbalance(s, state, window)
         elif 'getblock' in s: getblock(s, state, window, rpc_queue)
+        elif 'getrawmempool' in s: getrawmempool(s, state, window, rpc_queue)
         elif 'coinbase' in s: coinbase(s, state, window)
         elif 'getnetworkhashps' in s: getnetworkhashps(s, state, window, rpc_queue)
         elif 'getnettotals' in s: getnettotals(s, state, window, rpc_queue)
