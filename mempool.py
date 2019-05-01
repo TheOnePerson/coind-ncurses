@@ -24,6 +24,9 @@ def draw_window(state, window, rpc_queue=None):
                 g.addstr_cjust(win_header, 0, "...waiting for mempool information being processed...", curses.A_BOLD + curses.color_pair(3))
             else:
                 win_header.addstr(0, 1, "no mempool information loaded.", curses.A_BOLD + curses.color_pair(3))
+    else:
+        win_header.addstr(0, 1, "no mempool information loaded.", curses.A_BOLD + curses.color_pair(3))
+        win_header.addstr(0, 32, "press 'M' to load mempool data.", curses.A_BOLD)
 
     win_header.refresh()
     footer.draw_window(state, rpc_queue)

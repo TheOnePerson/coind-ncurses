@@ -345,17 +345,22 @@ def loop(interface_queue, rpc_queue, cfg):
                     except: pass
 
                     try:
-                        estimatefee1 = rpcrequest(rpchandle, 'estimatefee', False, 1)
-		        # Handle *coin clients version 0.16.x and above: use 'estimatesmartfee' instead of 'estimatefee'
-		        if not isinstance(estimatefee1, int) and not isinstance(estimatefee1, float):
-		    	    estimatefee1 = rpcrequest(rpchandle, 'estimatesmartfee', False, 1)
-		    	    estimatefee5 = rpcrequest(rpchandle, 'estimatesmartfee', False, 5)
-		    	    estimatefee = [{'blocks': 1, 'value': estimatefee1['feerate']}, {'blocks': 5, 'value': estimatefee5['feerate']}]
-		        else:
-	                    estimatefee5 = rpcrequest(rpchandle, 'estimatefee', False, 5)
-        	            estimatefee = [{'blocks': 1, 'value': estimatefee1}, {'blocks': 5, 'value': estimatefee5}]
+                        if g.estimatefee_mode == 0:
+                            estimatefee1 = rpcrequest(rpchandle, 'estimatesmartfee', False, 1)
+                            estimatefee5 = rpcrequest(rpchandle, 'estimatesmartfee', False, 5)
+                            estimatefee = [{'blocks': 1, 'value': estimatefee1['feerate']}, {'blocks': 5, 'value': estimatefee5['feerate']}]
+                        elif g.estimatefee_mode == 1:
+                            estimatefee1 = rpcrequest(rpchandle, 'estimatefee', False, 1)
+                            estimatefee5 = rpcrequest(rpchandle, 'estimatefee', False, 5)
+                            estimatefee = [{'blocks': 1, 'value': estimatefee1}, {'blocks': 5, 'value': estimatefee5}]
+                        elif g.estimatefee_mode == 2:
+                            estimatefee1 = rpcrequest(rpchandle, 'estimatefee', False)
+                            estimatefee = [{'blocks': 1, 'value': estimatefee1}]
                         interface_queue.put({'estimatefee': estimatefee})
-                    except: pass
+                    except: 
+                        # try the different methods one after another
+                        if g.estimatefee_mode < 2: g.estimatefee_mode += 1
+                        prev_blockcount = blockcount - 1
 
             last_update = time.time()
 

@@ -25,7 +25,8 @@ testnet = None
 x = None
 y = None
 viewport_heigth = None
-wallet_support = True		# default, get's adjusted in process.py
+wallet_support = True		# default, gets adjusted in process.py
+estimatefee_mode = 0		# default method of retrieving estimatefee values, gets adjusted in rpc.py
 
 def get_default_coinmode():
 	return 'BTC'

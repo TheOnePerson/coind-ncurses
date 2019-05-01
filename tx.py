@@ -63,7 +63,7 @@ def draw_window(state, window, rpc_queue):
         if rpc_queue.qsize() > 0:
             g.addstr_cjust(win_header, 0, "...waiting for transaction information being processed...", curses.A_BOLD + curses.color_pair(3))
         else:
-            win_header.addstr(0, 1, "no transaction loaded or no transaction information found", curses.A_BOLD + curses.color_pair(3))
+            win_header.addstr(0, 1, "no transaction loaded or no transaction information found.", curses.A_BOLD + curses.color_pair(3))
             win_header.addstr(1, 1, "if you have entered one, consider running " + g.rpc_deamon + " with -txindex", curses.A_BOLD)
             win_header.addstr(2, 1, "press 'G' to enter a txid", curses.A_BOLD)
 

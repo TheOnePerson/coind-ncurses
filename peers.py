@@ -24,7 +24,7 @@ def draw_window(state, window, rpc_queue = None, do_clear = True):
         if rpc_queue.qsize() > 0:
             g.addstr_cjust(win_header, 0, "...waiting for peer information being processed...", curses.A_BOLD + curses.color_pair(3))
         else:
-            win_header.addstr(0, 1, "no peer information loaded", curses.A_BOLD + curses.color_pair(3))
+            win_header.addstr(0, 1, "no peer information loaded.", curses.A_BOLD + curses.color_pair(3))
             win_header.addstr(1, 1, "press 'P' to refresh", curses.A_BOLD)
 
     win_header.refresh()
