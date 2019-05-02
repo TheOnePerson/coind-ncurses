@@ -34,8 +34,6 @@ For everyone who does not want to manage the BTC/BCH/BSV/BTG/LTC deamon (aka 'bi
 
 ```
 git clone https://github.com/TheOnePerson/coind-ncurses
-git clone https://github.com/jgarzik/python-bitcoinrpc
-mv python-bitcoinrpc/bitcoinrpc coind-ncurses/
 ```
 
 Copy ~/.bitcoin/bitcoin.conf to coind-ncurses's folder, or alternatively run with the switch --config=/path/to/bitcoin.conf
