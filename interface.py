@@ -69,7 +69,7 @@ def loop(state, window, interface_queue, rpc_queue):
 
         if not iterations % tick:
             iterations = 0
-            if state['mode'] == "monitor":
+            if state['mode'] == "home":
                 monitor.draw_window(state, window, rpc_queue, False)
 
         if hotkey.check(state, window, rpc_queue): # poll for user input

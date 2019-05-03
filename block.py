@@ -130,4 +130,4 @@ def draw_input_window(state, window, rpc_queue):
     else:
         UI.addmessageline("This is not a valid hash, height, or timestamp format", color + curses.A_BOLD)
         UI.clear()
-        state['mode'] = "monitor"
+        state['mode'] = "home"

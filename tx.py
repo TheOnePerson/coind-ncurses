@@ -186,4 +186,4 @@ def draw_input_window(state, window, rpc_queue):
     else:
         UI.addmessageline("This is no valid txid. Aborting.", color + curses.A_BOLD)
         UI.clear()
-        state['mode'] = "monitor"
+        state['mode'] = "home"

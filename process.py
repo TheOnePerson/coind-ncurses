@@ -59,7 +59,7 @@ def getblock(s, state, window, rpc_queue=None):
 
     state['blocks'][str(height)] = s['getblock']
 
-    if state['mode'] == "monitor":
+    if state['mode'] == "home":
         #monitor.draw_window(state, window, rpc_queue)
         pass
     if state['mode'] == "block":
@@ -90,7 +90,7 @@ def getnetworkhashps(s, state, window, rpc_queue):
     state['networkhashps'][blocks] = s['getnetworkhashps']['value']
 
     if state['mode'] == "splash" and blocks == 2016: # initialization complete
-        state['mode'] = "monitor"
+        state['mode'] = "home"
         #monitor.draw_window(state, window, rpc_queue)
         pass
 
