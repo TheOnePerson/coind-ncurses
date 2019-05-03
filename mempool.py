@@ -55,6 +55,6 @@ def draw_transactions(state):
             if condition:
                 win_transactions.addstr(index+1-offset, 3, "...")
             else:
-                win_transactions.addstr(index+1-offset, 3, "{: 5d}".format(int(index) + 1) + ": " + txdata[index])
+                win_transactions.addstr(index+1-offset, 3, "{: 6,d}".format(int(index) + 1) + ": " + txdata[index])
 
     win_transactions.refresh()
