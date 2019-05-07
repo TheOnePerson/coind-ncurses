@@ -209,6 +209,7 @@ def listsinceblock(s, state, window, rpc_queue, reload = True):
 
     state['wallet']['view_string'] = []
     state['wallet']['view_colorpair'] = []
+    state['wallet']['csv_data'] = []
     state['wallet']['spendings'] = {}
     state['wallet']['mode'] = 'tx'
 
@@ -227,6 +228,19 @@ def listsinceblock(s, state, window, rpc_queue, reload = True):
                 cumulative_balance += entry['fee']
             cumulative_balance += entry['amount']
             entry['cumulative_balance'] = cumulative_balance
+            # store csv data to state
+            csv = {}
+            csv['Confirmed'] = 'true' if int(entry['confirmations']) > 0 else 'false'
+            csv['Date'] =  time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(entry['time']))
+            csv['Type'] = entry['category']
+            if 'label' in entry:
+                csv['Label'] = entry['label']
+            else:
+                csv['Label'] = u''
+            csv['Address'] = entry['address']
+            csv['Amount'] = entry['amount']
+            csv['ID'] = entry['txid']
+            state['wallet']['csv_data'].append(csv)
 
     state['wallet']['transactions'].sort(key=lambda entry: entry['nonce'], reverse=True)
 

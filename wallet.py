@@ -6,6 +6,8 @@ import curses, time
 import global_mod as g
 import getstr
 import footer
+import readhashmap
+import csv
 
 def draw_window(state, window, rpc_queue=None, do_clear = True):
 
@@ -63,6 +65,8 @@ def draw_window(state, window, rpc_queue=None, do_clear = True):
 			draw_send_coins_window(state, window, rpc_queue)
 		elif state['wallet']['mode'] == 'backupwallet':
 			draw_backup_wallet_window(state, window, rpc_queue)
+		elif state['wallet']['mode'] == 'exporttx':
+			draw_exporttx_window(state, window, rpc_queue)
 		else:
 			g.addstr_rjust(window, 0, "(A: refresh, W: list tx)", curses.A_BOLD, 1)
 			g.addstr_rjust(window, 1, "(X: set tx fee, R: new address)", curses.A_BOLD, 1)
@@ -84,7 +88,7 @@ def draw_transactions(state):
 	win_transactions = curses.newwin(g.viewport_heigth, g.x, 4, 0)
 
 	win_transactions.addstr(0, 1, "{:,d}".format(len(state['wallet']['view_string'])/(5 if state['wallet']['verbose'] > 0 else 4)) + " transactions:", curses.A_BOLD + curses.color_pair(5))
-	caption = "(UP/DOWN: scroll, ENTER: view, V: less verbose)" if state['wallet']['verbose'] > 0 else "(UP/DOWN: scroll, ENTER: view, V: verbose)"
+	caption = "(UP/DOWN: scroll, ENTER: view, V: less verbose)" if state['wallet']['verbose'] > 0 else "(UP/DOWN: scroll, ENTER: view, V: verbose, O: Output tx)"
 	g.addstr_rjust(win_transactions, 0, caption, curses.A_BOLD + curses.color_pair(5), 1)
 	
 	offset = state['wallet']['offset']
@@ -273,6 +277,49 @@ def draw_backup_wallet_window(state, window, rpc_queue):
 		rpc_queue.put('getwalletinfo')
 		rpc_queue.put('listsinceblock')
 		UI.clear()
+
+def draw_exporttx_window(state, window, rpc_queue):
+	color = curses.color_pair(1)
+	if g.testnet:
+		color = curses.color_pair(2)
+
+	UI = getstr.UserInput(window, "export transactions to csv file")
+
+	# check for csv data in state
+	if 'csv_data' in state['wallet']:
+		if len(state['wallet']['csv_data']) > 0:
+			UI.addline("Please enter destination file name (existing file will be overwritten):", curses.A_BOLD)
+			try:
+				backup = str(UI.getstr(254)).strip()
+			except ValueError:
+				backup = ""
+			if backup != '':
+				state['wallet']['y'] = UI._y + 1
+				UI.addmessageline("Saving " + str(len(state['wallet']['csv_data'])) + " tx...", color + curses.A_BOLD)
+				_csv = readhashmap.get('csv_export_de.tpl')	# template hard coded here!!!
+				try:
+					with open(backup, 'w') as f:
+						csv.register_dialect('coindDialect', quoting=csv.QUOTE_ALL, skipinitialspace=True)
+						writer = csv.writer(f, dialect='coindDialect')
+						writer.writerow([_csv['Confirmed'], _csv['Date'], _csv['Type'], _csv['Label'], _csv['Address'], _csv['Amount'] + ' (' + g.coin_unit + ')', _csv['ID']])
+						for tx in state['wallet']['csv_data']:
+							writer.writerow([tx['Confirmed'].encode('utf-8'), tx['Date'].encode('utf-8'), tx['Type'].encode('utf-8'), tx['Label'].encode('utf-8'), tx['Address'].encode('utf-8'), str(tx['Amount']).encode('utf-8'), tx['ID'].encode('utf-8')])
+					f.close()
+					UI.addmessageline("File '" + backup + "' sucessfully written.", color + curses.A_BOLD)
+				except ZeroDivisionError:
+					UI.addmessageline("An error occured on saving the file...", color + curses.A_BOLD)
+			else:
+				UI.addmessageline("Invalid file or directory name. Aborting.", color + curses.A_BOLD)
+		else:
+			UI.addmessageline("There are transactions to save...", color + curses.A_BOLD)
+	else:
+		UI.addmessageline("No wallet data loaded yet...", color + curses.A_BOLD)
+		
+	# return to tx view
+	state['wallet']['mode'] = 'tx'
+	rpc_queue.put('getwalletinfo')
+	rpc_queue.put('listsinceblock')
+	UI.clear()
 
 def draw_send_coins_window(state, window, rpc_queue):
 	color = curses.color_pair(1)

@@ -84,6 +84,13 @@ def key_e(state, window, rpc_queue):
         state['console']['offset'] = 0
         console.draw_window(state, window, rpc_queue)
 
+def key_o(state, window, rpc_queue):
+    if state['mode'] == 'wallet':
+        if 'wallet' in state:
+            if state['wallet']['mode'] == 'tx':
+                state['wallet']['mode'] = 'exporttx'
+                wallet.draw_window(state, window, rpc_queue)
+
 def key_p(state, window, rpc_queue):
     rpc_queue.put('getpeerinfo')
     change_mode(state, window, 'peers', rpc_queue)
@@ -511,6 +518,9 @@ keymap = {
 
     ord('x'): key_x,
     ord('X'): key_x,
+
+    ord('o'): key_o,
+    ord('O'): key_o,
 
     ord('m'): key_m,
     ord('M'): key_m,
