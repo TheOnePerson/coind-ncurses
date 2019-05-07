@@ -303,7 +303,7 @@ def draw_exporttx_window(state, window, rpc_queue):
 						writer = csv.writer(f, dialect='coindDialect')
 						writer.writerow([_csv['Confirmed'], _csv['Date'], _csv['Type'], _csv['Label'], _csv['Address'], _csv['Amount'] + ' (' + g.coin_unit + ')', _csv['ID']])
 						for tx in state['wallet']['csv_data']:
-							writer.writerow([tx['Confirmed'].encode('utf-8'), tx['Date'].encode('utf-8'), tx['Type'].encode('utf-8'), tx['Label'].encode('utf-8'), tx['Address'].encode('utf-8'), str(tx['Amount']).encode('utf-8'), tx['ID'].encode('utf-8')])
+							writer.writerow([tx['Confirmed'].encode('utf-8'), tx['Date'].encode('utf-8'), _csv[tx['Type']], tx['Label'].encode('utf-8'), tx['Address'].encode('utf-8'), str(tx['Amount']).encode('utf-8'), tx['ID'].encode('utf-8')])
 					f.close()
 					UI.addmessageline("File '" + backup + "' sucessfully written.", color + curses.A_BOLD)
 				except ZeroDivisionError:
