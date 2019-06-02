@@ -67,6 +67,9 @@ def draw_tips(state):
                     while i < len(tip['hash']): # off by one but doesn't really matter
                         if tip['hash'][i] == '0': i += 1
                         else: break
-                    win_tips.addstr(index-offset, 18, str(i) + ' ...' + tip['hash'][i:], style)
+                    if i > 5:
+                        win_tips.addstr(index-offset, 18, str(i) + ' ...' + tip['hash'][i:], style)
+                    else:
+                        win_tips.addstr(index-offset, 18, tip['hash'], style)
 
     win_tips.refresh()
