@@ -2,7 +2,7 @@
 
 from curses import A_NORMAL
 
-version = "v0.0.29"
+version = "v0.0.30"
 modes = ['home', 'wallet', 'peers', 'mempool', 'block', 'tx', 'console', 'net', 'forks', 'quit']
 
 # the following line just declares the default coinmode. Will be overwritten by main.py if user has provided another value as argument
@@ -66,6 +66,20 @@ def init_coinmode():
 		coin_name = 'Bitcoin Cash'
 		coin_smallname = 'bitcoincash'
 		rpc_deamon = 'bitcoind'
+		rpc_port = '8332'
+		rpc_port_test = '18332'
+		node_port = '8333'
+		node_port_test = '18333'
+		reward_base = 50		# initial reward for mining a block
+		halving_blockamount = 210000	# number ob blocks after which the reward is being halved
+		blocks_per_day = 144
+	elif coinmode == 'BCHA':
+		# Config for bitcoin cash:
+		coin_unit = 'BCHA'
+		coin_unit_test = 'TCHA'
+		coin_name = 'Bitcoin Cash ABC'
+		coin_smallname = 'bitcoincashabc'
+		rpc_deamon = 'bitcoindabc'
 		rpc_port = '8332'
 		rpc_port_test = '18332'
 		node_port = '8333'
